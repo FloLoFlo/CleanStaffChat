@@ -6,6 +6,7 @@ import lombok.experimental.UtilityClass;
 import java.util.HashSet;
 import java.util.UUID;
 
+
 @UtilityClass
 public class PlayerCache {
 
@@ -47,5 +48,8 @@ public class PlayerCache {
 
     @Getter
     private final HashSet<String> cooldown_discord = new HashSet<>();
+
+    @Getter
+    private final HashSet<String> mutedservers = new HashSet<>();
 
 }

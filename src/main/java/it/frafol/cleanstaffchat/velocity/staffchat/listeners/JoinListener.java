@@ -20,7 +20,6 @@ import net.luckperms.api.LuckPermsProvider;
 import net.luckperms.api.model.user.User;
 import org.jetbrains.annotations.NotNull;
 
-import javax.security.auth.login.LoginException;
 import java.awt.*;
 
 import static it.frafol.cleanstaffchat.velocity.enums.VelocityConfig.*;
@@ -35,7 +34,7 @@ public class JoinListener {
 
     @Subscribe
     @SuppressWarnings("UnstableApiUsage")
-    public void handle(@NotNull ServerPostConnectEvent event) throws LoginException {
+    public void handle(@NotNull ServerPostConnectEvent event) {
 
         if (event.getPreviousServer() != null) {
             return;
@@ -47,7 +46,7 @@ public class JoinListener {
             PLUGIN.UpdateCheck(player);
         }
 
-        if (!(CleanStaffChat.getInstance().getServer().getAllPlayers().size() < 1)) {
+        if (!(CleanStaffChat.getInstance().getServer().getAllPlayers().isEmpty())) {
 
             if (!STAFF_JOIN_MESSAGE.get(Boolean.class)) {
                 return;
@@ -103,7 +102,8 @@ public class JoinListener {
 
                     CleanStaffChat.getInstance().getServer().getAllPlayers().stream().filter
                                     (players -> players.hasPermission(VelocityConfig.STAFFCHAT_USE_PERMISSION.get(String.class))
-                                            && !(PlayerCache.getToggled().contains(players.getUniqueId())))
+                                            && !(PlayerCache.getToggled().contains(players.getUniqueId()))
+                                            && !instance.isInBlockedStaffChatServer(players))
                             .forEach(players -> VelocityMessages.STAFF_JOIN_MESSAGE_FORMAT.send(players,
                                     new Placeholder("user", player.getUsername()),
                                     new Placeholder("displayname", ChatUtil.translateHex(user_prefix) + player.getUsername() + ChatUtil.translateHex(user_suffix)),
@@ -135,7 +135,8 @@ public class JoinListener {
 
                     CleanStaffChat.getInstance().getServer().getAllPlayers().stream().filter
                                     (players -> players.hasPermission(VelocityConfig.STAFFCHAT_USE_PERMISSION.get(String.class))
-                                            && !(PlayerCache.getToggled().contains(players.getUniqueId())))
+                                            && !(PlayerCache.getToggled().contains(players.getUniqueId()))
+                                            && !instance.isInBlockedStaffChatServer(players))
                             .forEach(players -> VelocityMessages.STAFF_JOIN_MESSAGE_FORMAT.send(players,
                                     new Placeholder("user", player.getUsername()),
                                     new Placeholder("displayname", player.getUsername()),
@@ -146,7 +147,7 @@ public class JoinListener {
 
                 }
 
-                if (VelocityDiscordConfig.DISCORD_ENABLED.get(Boolean.class) && VelocityConfig.STAFFCHAT_DISCORD_MODULE.get(Boolean.class)) {
+                if (VelocityDiscordConfig.DISCORD_ENABLED.get(Boolean.class) && VelocityConfig.STAFFCHAT_DISCORD_MODULE.get(Boolean.class) && VelocityConfig.STAFFCHAT_DISCORD_JOINLEAVE_MODULE.get(Boolean.class)) {
 
                     final TextChannel channel = PLUGIN.getJda().JdaWorker().getTextChannelById(VelocityDiscordConfig.STAFF_CHANNEL_ID.get(String.class));
 
@@ -163,8 +164,8 @@ public class JoinListener {
                         embed.setDescription(VelocityMessages.STAFF_DISCORD_JOIN_MESSAGE_FORMAT.get(String.class)
                                 .replace("%user%", player.getUsername()));
 
-                        embed.setColor(Color.YELLOW);
-                        embed.setFooter("Powered by CleanStaffChat");
+                        embed.setColor(Color.getColor(VelocityDiscordConfig.EMBEDS_STAFFCHATCOLOR.get(String.class)));
+                        embed.setFooter(VelocityDiscordConfig.EMBEDS_FOOTER.get(String.class), null);
 
                         channel.sendMessageEmbeds(embed.build()).queue();
 
@@ -181,7 +182,7 @@ public class JoinListener {
     }
 
     @Subscribe
-    public void handle(@NotNull DisconnectEvent event) throws LoginException {
+    public void handle(@NotNull DisconnectEvent event) {
 
         final Player player = event.getPlayer();
 
@@ -242,11 +243,12 @@ public class JoinListener {
 
                 }
 
-                if (CleanStaffChat.getInstance().getServer().getAllPlayers().size() >= 1) {
+                if (!CleanStaffChat.getInstance().getServer().getAllPlayers().isEmpty()) {
 
                     CleanStaffChat.getInstance().getServer().getAllPlayers().stream().filter
                                     (players -> players.hasPermission(VelocityConfig.STAFFCHAT_USE_PERMISSION.get(String.class))
-                                            && !(PlayerCache.getToggled().contains(players.getUniqueId())))
+                                            && !(PlayerCache.getToggled().contains(players.getUniqueId()))
+                                            && !instance.isInBlockedStaffChatServer(players))
                             .forEach(players -> VelocityMessages.STAFF_QUIT_MESSAGE_FORMAT.send(players,
                                     new Placeholder("user", player.getUsername()),
                                     new Placeholder("displayname", ChatUtil.translateHex(user_prefix) + player.getUsername() + ChatUtil.translateHex(user_suffix)),
@@ -279,11 +281,12 @@ public class JoinListener {
 
                 }
 
-                if (CleanStaffChat.getInstance().getServer().getAllPlayers().size() >= 1) {
+                if (!CleanStaffChat.getInstance().getServer().getAllPlayers().isEmpty()) {
 
                     CleanStaffChat.getInstance().getServer().getAllPlayers().stream().filter
                                     (players -> players.hasPermission(VelocityConfig.STAFFCHAT_USE_PERMISSION.get(String.class))
-                                            && !(PlayerCache.getToggled().contains(players.getUniqueId())))
+                                            && !(PlayerCache.getToggled().contains(players.getUniqueId()))
+                                            && !instance.isInBlockedStaffChatServer(players))
                             .forEach(players -> VelocityMessages.STAFF_QUIT_MESSAGE_FORMAT.send(players,
                                     new Placeholder("user", player.getUsername()),
                                     new Placeholder("displayname", player.getUsername()),
@@ -298,7 +301,7 @@ public class JoinListener {
 
             if (VelocityDiscordConfig.DISCORD_ENABLED.get(Boolean.class)
                     && VelocityConfig.STAFFCHAT_DISCORD_MODULE.get(Boolean.class)
-                    && VelocityConfig.JOIN_LEAVE_DISCORD_MODULE.get(Boolean.class)) {
+                    && VelocityConfig.STAFFCHAT_DISCORD_JOINLEAVE_MODULE.get(Boolean.class)) {
 
                 final TextChannel channel = PLUGIN.getJda().JdaWorker().getTextChannelById(VelocityDiscordConfig.STAFF_CHANNEL_ID.get(String.class));
 
@@ -315,8 +318,8 @@ public class JoinListener {
                     embed.setDescription(VelocityMessages.STAFF_DISCORD_QUIT_MESSAGE_FORMAT.get(String.class)
                             .replace("%user%", player.getUsername()));
 
-                    embed.setColor(Color.YELLOW);
-                    embed.setFooter("Powered by CleanStaffChat");
+                    embed.setColor(Color.getColor(VelocityDiscordConfig.EMBEDS_STAFFCHATCOLOR.get(String.class)));
+                    embed.setFooter(VelocityDiscordConfig.EMBEDS_FOOTER.get(String.class), null);
 
                     channel.sendMessageEmbeds(embed.build()).queue();
 

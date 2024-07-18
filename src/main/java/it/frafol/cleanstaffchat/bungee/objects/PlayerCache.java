@@ -1,8 +1,11 @@
 package it.frafol.cleanstaffchat.bungee.objects;
 
+import com.google.common.io.ByteArrayDataOutput;
+import com.google.common.io.ByteStreams;
+import it.frafol.cleanstaffchat.bungee.enums.BungeeConfig;
 import lombok.Getter;
 import lombok.experimental.UtilityClass;
-import net.md_5.bungee.api.ChatColor;
+import net.md_5.bungee.api.connection.ProxiedPlayer;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.HashSet;
@@ -49,6 +52,9 @@ public class PlayerCache {
     @Getter
     private final HashSet<String> cooldown_discord = new HashSet<>();
 
+    @Getter
+    private final HashSet<String> mutedservers = new HashSet<>();
+
     public boolean hasColorCodes(@NotNull String message) {
         return message.contains("&0") ||
                 message.contains("&1") ||
@@ -74,30 +80,72 @@ public class PlayerCache {
                 message.contains("&r");
     }
 
-    private boolean containsHexColor(String message) {
-        String hexColorPattern = "(?i)&#[a-f0-9]{6}";
-        return message.matches(".*" + hexColorPattern + ".*");
+    public String translateHex(String string) {
+        String hex = convertHexColors(string);
+        return hex.replace("&", "§");
     }
 
-    public static String translateHex(String message) {
+    private String convertHexColors(String message) {
 
         if (!containsHexColor(message)) {
-            return message.replace("&", "§");
+            return message;
         }
 
-        final Pattern HEX_PATTERN = Pattern.compile("&#([A-Fa-f0-9]{6})");
-        final char COLOR_CHAR = ChatColor.COLOR_CHAR;
-
-        Matcher matcher = HEX_PATTERN.matcher(message);
-        StringBuffer buffer = new StringBuffer(message.length() + 4 * 8);
+        Pattern hexPattern = Pattern.compile("(#[A-Fa-f0-9]{6}|<#[A-Fa-f0-9]{6}>|&#[A-Fa-f0-9]{6})");
+        Matcher matcher = hexPattern.matcher(message);
+        StringBuffer buffer = new StringBuffer();
         while (matcher.find()) {
-            String group = matcher.group(1);
-            matcher.appendReplacement(buffer, COLOR_CHAR + "x"
-                    + COLOR_CHAR + group.charAt(0) + COLOR_CHAR + group.charAt(1)
-                    + COLOR_CHAR + group.charAt(2) + COLOR_CHAR + group.charAt(3)
-                    + COLOR_CHAR + group.charAt(4) + COLOR_CHAR + group.charAt(5)
-            );
+            String hexCode = matcher.group();
+            String colorCode = hexCode.substring(1, 7);
+            if (hexCode.startsWith("<#") && hexCode.endsWith(">")) {
+                colorCode = hexCode.substring(2, 8);
+            } else if (hexCode.startsWith("&#")) {
+                colorCode = hexCode.substring(2, 8);
+            }
+            String minecraftColorCode = translateHexToMinecraftColorCode(colorCode);
+            matcher.appendReplacement(buffer, minecraftColorCode);
         }
-        return matcher.appendTail(buffer).toString().replace("&", "§");
+        matcher.appendTail(buffer);
+        return buffer.toString();
+    }
+
+    private String translateHexToMinecraftColorCode(String hex) {
+        char[] chars = hex.toCharArray();
+        return "§x" +
+                '§' + chars[0] +
+                '§' + chars[1] +
+                '§' + chars[2] +
+                '§' + chars[3] +
+                '§' + chars[4] +
+                '§' + chars[5];
+    }
+
+    private boolean containsHexColor(String message) {
+        String[] hexColorPattern = new String[]{"#[a-fA-F0-9]{6}", "&#[a-fA-F0-9]{6}", "<#[a-fA-F0-9]]{6}>"};
+        for (String pattern : hexColorPattern) {
+            if (Pattern.compile(pattern).matcher(message).find()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @SuppressWarnings("UnstableApiUsage")
+    public void sendChannelMessage(ProxiedPlayer player, boolean cancel) {
+
+        if (!BungeeConfig.WORKAROUND_KICK.get(Boolean.class)) {
+            return;
+        }
+
+        final ByteArrayDataOutput buf = ByteStreams.newDataOutput();
+
+        buf.writeUTF(String.valueOf(cancel));
+        buf.writeUTF(player.getName());
+
+        if (player.getServer() == null) {
+            return;
+        }
+
+        player.getServer().sendData("cleansc:cancel", buf.toByteArray());
     }
 }

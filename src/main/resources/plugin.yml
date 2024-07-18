@@ -6,5 +6,10 @@ description: Best StaffChat plugin.
 api-version: 1.13
 folia-supported: true
 softdepend:
+  - PlaceholderAPI
+  - MiniPlaceholders
   - LuckPerms
   - UltraPermissions
+  - PremiumVanish
+  - SuperVanish
+  - Spicord

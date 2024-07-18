@@ -2,12 +2,15 @@ package it.frafol.cleanstaffchat.bukkit.staffchat.commands.impl;
 
 import it.frafol.cleanstaffchat.bukkit.CleanStaffChat;
 import it.frafol.cleanstaffchat.bukkit.enums.SpigotConfig;
+import it.frafol.cleanstaffchat.bukkit.enums.SpigotDiscordConfig;
 import it.frafol.cleanstaffchat.bukkit.enums.SpigotMessages;
 import it.frafol.cleanstaffchat.bukkit.objects.PlayerCache;
 import it.frafol.cleanstaffchat.bukkit.staffchat.commands.CommandBase;
 import me.TechsCode.UltraPermissions.UltraPermissions;
 import me.TechsCode.UltraPermissions.UltraPermissionsAPI;
 import me.TechsCode.UltraPermissions.storage.collection.UserList;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.luckperms.api.LuckPerms;
 import net.luckperms.api.LuckPermsProvider;
 import net.luckperms.api.model.user.User;
@@ -16,6 +19,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
+import java.awt.*;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,10 +33,8 @@ public class AFKCommand extends CommandBase {
     public boolean execute(@NotNull CommandSender sender, @NotNull String label, @NotNull String[] args) {
         
         if (!SpigotConfig.STAFFCHAT_AFK_MODULE.get(Boolean.class)) {
-
             sender.sendMessage((SpigotMessages.MODULE_DISABLED.color()
                     .replace("%prefix%", SpigotMessages.PREFIX.color())));
-
             return false;
         }
 
@@ -42,12 +44,9 @@ public class AFKCommand extends CommandBase {
         
         Player player = (Player) sender;
         if (!player.hasPermission(SpigotConfig.STAFFCHAT_AFK_PERMISSION.get(String.class))) {
-
             player.sendMessage((SpigotMessages.NO_PERMISSION.color()
                     .replace("%prefix%", SpigotMessages.PREFIX.color())));
-
             return false;
-
         }
 
         if (!PlayerCache.getAfk().contains(player.getUniqueId())) {
@@ -57,7 +56,9 @@ public class AFKCommand extends CommandBase {
 
                 final User user = api.getUserManager().getUser(player.getUniqueId());
 
-                if (user == null) {return false;}
+                if (user == null) {
+                            return false;
+                        }
                 final String prefix = user.getCachedData().getMetaData().getPrefix();
                 final String suffix = user.getCachedData().getMetaData().getSuffix();
                 final String user_prefix = prefix == null ? "" : prefix;
@@ -66,13 +67,13 @@ public class AFKCommand extends CommandBase {
                 CleanStaffChat.getInstance().getServer().getOnlinePlayers().stream().filter
                                 (players -> players.hasPermission(SpigotConfig.STAFFCHAT_USE_PERMISSION.get(String.class))
                                         && !(PlayerCache.getToggled().contains(players.getUniqueId())))
-                        .forEach(players -> players.sendMessage(SpigotMessages.STAFFCHAT_AFK_ON.color()
+                        .forEach(players -> players.sendMessage(SpigotMessages.STAFFCHAT_AFK_ON.color(player)
                                 .replace("%prefix%", SpigotMessages.PREFIX.color())
                                 .replace("%user%", player.getName())
-                                .replace("%displayname%", PlayerCache.translateHex(user_prefix) + player.getName() + PlayerCache.translateHex(user_suffix))
-                                .replace("%userprefix%", PlayerCache.translateHex(user_prefix))
+                                .replace("%displayname%", PlayerCache.color(user_prefix) + player.getName() + PlayerCache.color(user_suffix))
+                                .replace("%userprefix%", PlayerCache.color(user_prefix))
                                 .replace("%server%", "")
-                                .replace("%usersuffix%", PlayerCache.translateHex(user_suffix))));
+                                .replace("%usersuffix%", PlayerCache.color(user_suffix))));
 
             } else if (Bukkit.getServer().getPluginManager().getPlugin("UltraPermissions") != null) {
 
@@ -93,7 +94,7 @@ public class AFKCommand extends CommandBase {
                 CleanStaffChat.getInstance().getServer().getOnlinePlayers().stream().filter
                                 (players -> players.hasPermission(SpigotConfig.STAFFCHAT_USE_PERMISSION.get(String.class))
                                         && !(PlayerCache.getToggled_admin().contains(players.getUniqueId())))
-                        .forEach(players -> players.sendMessage(SpigotMessages.STAFFCHAT_AFK_ON.color()
+                        .forEach(players -> players.sendMessage(SpigotMessages.STAFFCHAT_AFK_ON.color(player)
                                 .replace("%prefix%", SpigotMessages.PREFIX.color())
                                 .replace("%user%", player.getName())
                                 .replace("%displayname%", ultraPermissionsUserPrefixFinal + player.getName() + ultraPermissionsUserSuffixFinal)
@@ -107,7 +108,7 @@ public class AFKCommand extends CommandBase {
                 CleanStaffChat.getInstance().getServer().getOnlinePlayers().stream().filter
                                 (players -> players.hasPermission(SpigotConfig.STAFFCHAT_USE_PERMISSION.get(String.class))
                                         && !(PlayerCache.getToggled().contains(players.getUniqueId())))
-                        .forEach(players -> players.sendMessage(SpigotMessages.STAFFCHAT_AFK_ON.color()
+                        .forEach(players -> players.sendMessage(SpigotMessages.STAFFCHAT_AFK_ON.color(player)
                                 .replace("%prefix%", SpigotMessages.PREFIX.color())
                                 .replace("%user%", player.getName())
                                 .replace("%userprefix%", "")
@@ -119,6 +120,36 @@ public class AFKCommand extends CommandBase {
 
             PlayerCache.getAfk().add(player.getUniqueId());
 
+            if (SpigotDiscordConfig.DISCORD_ENABLED.get(Boolean.class)
+                    && SpigotConfig.STAFFCHAT_DISCORD_MODULE.get(Boolean.class)
+                    && SpigotConfig.STAFFCHAT_DISCORD_AFK_MODULE.get(Boolean.class)) {
+
+                final TextChannel channel = plugin.getJda().getTextChannelById(SpigotDiscordConfig.STAFF_CHANNEL_ID.get(String.class));
+
+                if (channel == null) {
+                    return false;
+                }
+
+                if (SpigotDiscordConfig.USE_EMBED.get(Boolean.class)) {
+
+                    EmbedBuilder embed = new EmbedBuilder();
+
+                    embed.setTitle(SpigotDiscordConfig.STAFFCHAT_EMBED_TITLE.get(String.class), null);
+
+                    embed.setDescription(SpigotMessages.STAFF_DISCORD_AFK_ON_MESSAGE_FORMAT.get(String.class)
+                            .replace("%user%", player.getName()));
+
+                    embed.setColor(Color.getColor(SpigotDiscordConfig.EMBEDS_STAFFCHATCOLOR.get(String.class)));
+                    embed.setFooter(SpigotDiscordConfig.EMBEDS_FOOTER.get(String.class), null);
+
+                    channel.sendMessageEmbeds(embed.build()).queue();
+
+                } else {
+                    channel.sendMessageFormat(SpigotMessages.STAFF_DISCORD_AFK_ON_MESSAGE_FORMAT.get(String.class)
+                            .replace("%user%", player.getName())).queue();
+                }
+            }
+
         } else {
 
             if (Bukkit.getServer().getPluginManager().getPlugin("LuckPerms") != null) {
@@ -127,7 +158,10 @@ public class AFKCommand extends CommandBase {
 
                 final User user = api.getUserManager().getUser(player.getUniqueId());
 
-                if (user == null) {return false;}
+                if (user == null) {
+                    return false;
+                }
+
                 final String prefix = user.getCachedData().getMetaData().getPrefix();
                 final String suffix = user.getCachedData().getMetaData().getSuffix();
                 final String user_prefix = prefix == null ? "" : prefix;
@@ -136,13 +170,13 @@ public class AFKCommand extends CommandBase {
                 CleanStaffChat.getInstance().getServer().getOnlinePlayers().stream().filter
                                 (players -> players.hasPermission(SpigotConfig.STAFFCHAT_USE_PERMISSION.get(String.class))
                                         && !(PlayerCache.getToggled().contains(players.getUniqueId())))
-                        .forEach(players -> players.sendMessage(SpigotMessages.STAFFCHAT_AFK_OFF.color()
+                        .forEach(players -> players.sendMessage(SpigotMessages.STAFFCHAT_AFK_OFF.color(player)
                                 .replace("%prefix%", SpigotMessages.PREFIX.color())
                                 .replace("%user%", player.getName())
-                                .replace("%displayname%", PlayerCache.translateHex(user_prefix) + player.getName() + PlayerCache.translateHex(user_suffix))
-                                .replace("%userprefix%", PlayerCache.translateHex(user_prefix))
+                                .replace("%displayname%", PlayerCache.color(user_prefix) + player.getName() + PlayerCache.color(user_suffix))
+                                .replace("%userprefix%", PlayerCache.color(user_prefix))
                                 .replace("%server%", "")
-                                .replace("%usersuffix%", PlayerCache.translateHex(user_suffix))));
+                                .replace("%usersuffix%", PlayerCache.color(user_suffix))));
 
             } else if (Bukkit.getServer().getPluginManager().getPlugin("UltraPermissions") != null) {
 
@@ -163,7 +197,7 @@ public class AFKCommand extends CommandBase {
                 CleanStaffChat.getInstance().getServer().getOnlinePlayers().stream().filter
                                 (players -> players.hasPermission(SpigotConfig.STAFFCHAT_USE_PERMISSION.get(String.class))
                                         && !(PlayerCache.getToggled_admin().contains(players.getUniqueId())))
-                        .forEach(players -> players.sendMessage(SpigotMessages.STAFFCHAT_AFK_OFF.color()
+                        .forEach(players -> players.sendMessage(SpigotMessages.STAFFCHAT_AFK_OFF.color(player)
                                 .replace("%prefix%", SpigotMessages.PREFIX.color())
                                 .replace("%user%", player.getName())
                                 .replace("%displayname%", ultraPermissionsUserPrefixFinal + player.getName() + ultraPermissionsUserSuffixFinal)
@@ -177,7 +211,7 @@ public class AFKCommand extends CommandBase {
                 CleanStaffChat.getInstance().getServer().getOnlinePlayers().stream().filter
                                 (players -> players.hasPermission(SpigotConfig.STAFFCHAT_USE_PERMISSION.get(String.class))
                                         && !(PlayerCache.getToggled().contains(players.getUniqueId())))
-                        .forEach(players -> players.sendMessage(SpigotMessages.STAFFCHAT_AFK_OFF.color()
+                        .forEach(players -> players.sendMessage(SpigotMessages.STAFFCHAT_AFK_OFF.color(player)
                                 .replace("%prefix%", SpigotMessages.PREFIX.color())
                                 .replace("%user%", player.getName())
                                 .replace("%userprefix%", "")
@@ -188,7 +222,35 @@ public class AFKCommand extends CommandBase {
             }
 
             PlayerCache.getAfk().remove(player.getUniqueId());
+            if (SpigotDiscordConfig.DISCORD_ENABLED.get(Boolean.class)
+                    && SpigotConfig.STAFFCHAT_DISCORD_MODULE.get(Boolean.class)
+                    && SpigotConfig.STAFFCHAT_DISCORD_AFK_MODULE.get(Boolean.class)) {
 
+                final TextChannel channel = plugin.getJda().getTextChannelById(SpigotDiscordConfig.STAFF_CHANNEL_ID.get(String.class));
+
+                if (channel == null) {
+                    return false;
+                }
+
+                if (SpigotDiscordConfig.USE_EMBED.get(Boolean.class)) {
+
+                    EmbedBuilder embed = new EmbedBuilder();
+
+                    embed.setTitle(SpigotDiscordConfig.STAFFCHAT_EMBED_TITLE.get(String.class), null);
+
+                    embed.setDescription(SpigotMessages.STAFF_DISCORD_AFK_OFF_MESSAGE_FORMAT.get(String.class)
+                            .replace("%user%", player.getName()));
+
+                    embed.setColor(Color.getColor(SpigotDiscordConfig.EMBEDS_STAFFCHATCOLOR.get(String.class)));
+                    embed.setFooter(SpigotDiscordConfig.EMBEDS_FOOTER.get(String.class), null);
+
+                    channel.sendMessageEmbeds(embed.build()).queue();
+
+                } else {
+                    channel.sendMessageFormat(SpigotMessages.STAFF_DISCORD_AFK_OFF_MESSAGE_FORMAT.get(String.class)
+                            .replace("%user%", player.getName())).queue();
+                }
+            }
         }
         return false;
     }

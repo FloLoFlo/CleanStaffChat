@@ -6,14 +6,21 @@ import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
 import it.frafol.cleanstaffchat.velocity.CleanStaffChat;
 import it.frafol.cleanstaffchat.velocity.enums.VelocityConfig;
+import it.frafol.cleanstaffchat.velocity.enums.VelocityDiscordConfig;
 import it.frafol.cleanstaffchat.velocity.enums.VelocityMessages;
 import it.frafol.cleanstaffchat.velocity.enums.VelocityRedis;
 import it.frafol.cleanstaffchat.velocity.objects.Placeholder;
 import it.frafol.cleanstaffchat.velocity.objects.PlayerCache;
 import it.frafol.cleanstaffchat.velocity.utils.ChatUtil;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.luckperms.api.LuckPerms;
 import net.luckperms.api.LuckPermsProvider;
 import net.luckperms.api.model.user.User;
+
+import java.awt.*;
+
+import static it.frafol.cleanstaffchat.velocity.enums.VelocityConfig.instance;
 
 public class AFKCommand implements SimpleCommand {
 
@@ -34,25 +41,17 @@ public class AFKCommand implements SimpleCommand {
         }
 
         if (!VelocityConfig.STAFFCHAT_AFK_MODULE.get(Boolean.class)) {
-
             VelocityMessages.MODULE_DISABLED.send(commandSource, new Placeholder("prefix", VelocityMessages.PREFIX.color()));
-
             return;
-
         }
 
         if (!commandSource.hasPermission(VelocityConfig.STAFFCHAT_AFK_PERMISSION.get(String.class))) {
-
             VelocityMessages.NO_PERMISSION.send(commandSource, new Placeholder("prefix", VelocityMessages.PREFIX.color()));
-
             return;
-
         }
 
         if (!((Player) commandSource).getCurrentServer().isPresent()) {
-
             return;
-
         }
 
         if (!PlayerCache.getAfk().contains(((Player) commandSource).getUniqueId())) {
@@ -62,7 +61,10 @@ public class AFKCommand implements SimpleCommand {
 
                 final User user = api.getUserManager().getUser(((Player) commandSource).getUniqueId());
 
-                if (user == null) {return;}
+                if (user == null) {
+                    return;
+                }
+
                 final String prefix = user.getCachedData().getMetaData().getPrefix();
                 final String suffix = user.getCachedData().getMetaData().getSuffix();
                 final String user_prefix = prefix == null ? "" : prefix;
@@ -89,7 +91,8 @@ public class AFKCommand implements SimpleCommand {
 
                 CleanStaffChat.getInstance().getServer().getAllPlayers().stream().filter
                                 (players -> players.hasPermission(VelocityConfig.STAFFCHAT_USE_PERMISSION.get(String.class))
-                                        && !(PlayerCache.getToggled().contains(players.getUniqueId())))
+                                        && !(PlayerCache.getToggled().contains(players.getUniqueId()))
+                                        && !instance.isInBlockedStaffChatServer(players))
                         .forEach(players -> VelocityMessages.STAFFCHAT_AFK_ON.send(players,
                                 new Placeholder("user", ((Player) commandSource).getUsername()),
                                 new Placeholder("displayname", ChatUtil.translateHex(user_prefix) + commandSource + ChatUtil.translateHex(user_suffix)),
@@ -114,14 +117,13 @@ public class AFKCommand implements SimpleCommand {
                             .replace("&", "§");
 
                     redisBungeeAPI.sendChannelMessage("CleanStaffChat-StaffAFKMessage-RedisBungee", final_message);
-
                     return;
-
                 }
 
                 CleanStaffChat.getInstance().getServer().getAllPlayers().stream().filter
                                 (players -> players.hasPermission(VelocityConfig.STAFFCHAT_USE_PERMISSION.get(String.class))
-                                        && !(PlayerCache.getToggled().contains(players.getUniqueId())))
+                                        && !(PlayerCache.getToggled().contains(players.getUniqueId()))
+                                        && !instance.isInBlockedStaffChatServer(players))
                         .forEach(players -> VelocityMessages.STAFFCHAT_AFK_ON.send(players,
                                 new Placeholder("user", ((Player) commandSource).getUsername()),
                                 new Placeholder("displayname", ((Player) commandSource).getUsername()),
@@ -133,6 +135,38 @@ public class AFKCommand implements SimpleCommand {
             }
 
             PlayerCache.getAfk().add(((Player) commandSource).getUniqueId());
+            if (VelocityDiscordConfig.DISCORD_ENABLED.get(Boolean.class)
+                    && VelocityConfig.STAFFCHAT_DISCORD_MODULE.get(Boolean.class)
+                    && VelocityConfig.STAFFCHAT_DISCORD_AFK_MODULE.get(Boolean.class)) {
+
+                final TextChannel channel = PLUGIN.getJda().JdaWorker().getTextChannelById(VelocityDiscordConfig.STAFF_CHANNEL_ID.get(String.class));
+
+                if (channel == null) {
+                    return;
+                }
+
+                if (VelocityDiscordConfig.USE_EMBED.get(Boolean.class)) {
+
+                    EmbedBuilder embed = new EmbedBuilder();
+
+                    embed.setTitle(VelocityDiscordConfig.STAFFCHAT_EMBED_TITLE.get(String.class), null);
+
+                    embed.setDescription(VelocityMessages.STAFF_DISCORD_AFK_ON_MESSAGE_FORMAT.get(String.class)
+                            .replace("%user%", ((Player) commandSource).getUsername()));
+
+                    embed.setColor(Color.getColor(VelocityDiscordConfig.EMBEDS_STAFFCHATCOLOR.get(String.class)));
+                    embed.setFooter(VelocityDiscordConfig.EMBEDS_FOOTER.get(String.class), null);
+
+                    channel.sendMessageEmbeds(embed.build()).queue();
+
+                } else {
+
+                    channel.sendMessageFormat(VelocityMessages.STAFF_DISCORD_AFK_ON_MESSAGE_FORMAT.get(String.class)
+                                    .replace("%user%", ((Player) commandSource).getUsername()))
+                            .queue();
+
+                }
+            }
 
         } else {
 
@@ -142,7 +176,10 @@ public class AFKCommand implements SimpleCommand {
 
                 final User user = api.getUserManager().getUser(((Player) commandSource).getUniqueId());
 
-                if (user == null) {return;}
+                if (user == null) {
+                    return;
+                }
+
                 final String prefix = user.getCachedData().getMetaData().getPrefix();
                 final String suffix = user.getCachedData().getMetaData().getSuffix();
                 final String user_prefix = prefix == null ? "" : prefix;
@@ -162,14 +199,13 @@ public class AFKCommand implements SimpleCommand {
                             .replace("&", "§");
 
                     redisBungeeAPI.sendChannelMessage("CleanStaffChat-StaffAFKMessage-RedisBungee", final_message);
-
                     return;
-
                 }
 
                 CleanStaffChat.getInstance().getServer().getAllPlayers().stream().filter
                                 (players -> players.hasPermission(VelocityConfig.STAFFCHAT_AFK_PERMISSION.get(String.class))
-                                        && !(PlayerCache.getToggled().contains(players.getUniqueId())))
+                                        && !(PlayerCache.getToggled().contains(players.getUniqueId()))
+                                        && !instance.isInBlockedStaffChatServer(players))
                         .forEach(players -> VelocityMessages.STAFFCHAT_AFK_OFF.send(players,
                                 new Placeholder("user", ((Player) commandSource).getUsername()),
                                 new Placeholder("displayname", ChatUtil.translateHex(user_prefix) + commandSource + ChatUtil.translateHex(user_suffix)),
@@ -194,14 +230,13 @@ public class AFKCommand implements SimpleCommand {
                             .replace("&", "§");
 
                     redisBungeeAPI.sendChannelMessage("CleanStaffChat-StaffAFKMessage-RedisBungee", final_message);
-
                     return;
-
                 }
 
                 CleanStaffChat.getInstance().getServer().getAllPlayers().stream().filter
                                 (players -> players.hasPermission(VelocityConfig.STAFFCHAT_AFK_PERMISSION.get(String.class))
-                                        && !(PlayerCache.getToggled().contains(players.getUniqueId())))
+                                        && !(PlayerCache.getToggled().contains(players.getUniqueId()))
+                                        && !instance.isInBlockedStaffChatServer(players))
                         .forEach(players -> VelocityMessages.STAFFCHAT_AFK_OFF.send(players,
                                 new Placeholder("user", ((Player) commandSource).getUsername()),
                                 new Placeholder("displayname", ((Player) commandSource).getUsername()),
@@ -209,11 +244,39 @@ public class AFKCommand implements SimpleCommand {
                                 new Placeholder("usersuffix", ""),
                                 new Placeholder("server", ((Player) commandSource).getCurrentServer().get().getServer().getServerInfo().getName()),
                                 new Placeholder("prefix", VelocityMessages.PREFIX.color())));
-
             }
 
             PlayerCache.getAfk().remove(((Player) commandSource).getUniqueId());
+            if (VelocityDiscordConfig.DISCORD_ENABLED.get(Boolean.class)
+                    && VelocityConfig.STAFFCHAT_DISCORD_MODULE.get(Boolean.class)
+                    && VelocityConfig.STAFFCHAT_DISCORD_AFK_MODULE.get(Boolean.class)) {
 
+                final TextChannel channel = PLUGIN.getJda().JdaWorker().getTextChannelById(VelocityDiscordConfig.STAFF_CHANNEL_ID.get(String.class));
+
+                if (channel == null) {
+                    return;
+                }
+
+                if (VelocityDiscordConfig.USE_EMBED.get(Boolean.class)) {
+
+                    EmbedBuilder embed = new EmbedBuilder();
+
+                    embed.setTitle(VelocityDiscordConfig.STAFFCHAT_EMBED_TITLE.get(String.class), null);
+
+                    embed.setDescription(VelocityMessages.STAFF_DISCORD_AFK_OFF_MESSAGE_FORMAT.get(String.class)
+                            .replace("%user%", ((Player) commandSource).getUsername()));
+
+                    embed.setColor(Color.getColor(VelocityDiscordConfig.EMBEDS_STAFFCHATCOLOR.get(String.class)));
+                    embed.setFooter(VelocityDiscordConfig.EMBEDS_FOOTER.get(String.class), null);
+
+                    channel.sendMessageEmbeds(embed.build()).queue();
+
+                } else {
+                    channel.sendMessageFormat(VelocityMessages.STAFF_DISCORD_AFK_OFF_MESSAGE_FORMAT.get(String.class)
+                                    .replace("%user%", ((Player) commandSource).getUsername()))
+                            .queue();
+                }
+            }
         }
     }
 }

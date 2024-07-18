@@ -1,6 +1,17 @@
 package it.frafol.cleanstaffchat.bukkit.enums;
 
+import io.github.miniplaceholders.api.MiniPlaceholders;
 import it.frafol.cleanstaffchat.bukkit.CleanStaffChat;
+import me.clip.placeholderapi.PlaceholderAPI;
+import net.kyori.adventure.audience.Audience;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import org.bukkit.entity.Player;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public enum SpigotMessages {
 
@@ -15,8 +26,18 @@ public enum SpigotMessages {
     DONORCHAT_COOLDOWN_MESSAGE("messages.donorchat.cooldown"),
 
     STAFFCHAT_FORMAT("messages.staffchat.staffchat_format"),
+    STAFFCHAT_CONSOLE_FORMAT("messages.staffchat.staffchat_console_format"),
+
     ADMINCHAT_FORMAT("messages.adminchat.adminchat_format"),
+    ADMINCHAT_CONSOLE_FORMAT("messages.adminchat.adminchat_console_format"),
+
     DONORCHAT_FORMAT("messages.donorchat.donorchat_format"),
+    DONORCHAT_CONSOLE_FORMAT("messages.donorchat.donorchat_console_format"),
+
+    GLOBALPREFIX("messages.globalchat.prefix"),
+    MUTECHAT_ENABLED("messages.globalchat.mutechat_enabled"),
+    MUTECHAT_DISABLED("messages.globalchat.mutechat_disabled"),
+    MUTECHAT_USAGE("messages.globalchat.mutechat_usage"),
 
     STAFFCHAT_MUTED_ERROR_DISCORD("messages.chat_muted_error_discord"),
     STAFFCHAT_MUTED_ERROR("messages.chat_muted_error"),
@@ -32,6 +53,8 @@ public enum SpigotMessages {
 
     STAFF_DISCORD_JOIN_MESSAGE_FORMAT("messages.staffchat.discord.discord_join_message_format"),
     STAFF_DISCORD_QUIT_MESSAGE_FORMAT("messages.staffchat.discord.discord_quit_message_format"),
+    STAFF_DISCORD_AFK_ON_MESSAGE_FORMAT("messages.staffchat.discord.discord_afk_on_message_format"),
+    STAFF_DISCORD_AFK_OFF_MESSAGE_FORMAT("messages.staffchat.discord.discord_afk_off_message_format"),
     STAFF_JOIN_MESSAGE_FORMAT("messages.staffchat.staff_join_message_format"),
     STAFF_QUIT_MESSAGE_FORMAT("messages.staffchat.staff_quit_message_format"),
 
@@ -75,10 +98,18 @@ public enum SpigotMessages {
     LIST_HEADER("messages.stafflist.header"),
     LIST_FORMAT("messages.stafflist.format"),
     LIST_FOOTER("messages.stafflist.footer"),
+    LIST_NONE("messages.stafflist.nobody"),
+    LIST_USAGE("messages.stafflist.usage"),
+
+    STAFFLIST_AFK("messages.stafflist.afk"),
+    DISCORDLIST_AFK("messages.stafflist.discord.afk"),
 
     DISCORDLIST_HEADER("messages.stafflist.discord.header"),
     DISCORDLIST_FORMAT("messages.stafflist.discord.format"),
     DISCORDLIST_FOOTER("messages.stafflist.discord.footer"),
+    DISCORDLIST_NONE("messages.stafflist.discord.nobody"),
+
+    UPDATE("messages.new_version"),
 
     DONORCHAT_COOLDOWN_ERROR_DISCORD("messages.donorchat.discord.discord_cooldown_message");
 
@@ -94,6 +125,68 @@ public enum SpigotMessages {
     }
 
     public String color() {
-        return get(String.class).replace("&", "§");
+        String hex = convertHexColors(get(String.class));
+        return hex.replace("&", "§");
+    }
+
+    public String color(Player player) {
+        String hex = convertHexColors(get(String.class));
+        if (instance.getPAPI()) {
+            hex = PlaceholderAPI.setPlaceholders(player, hex);
+        }
+        if (instance.getMiniPlaceholders()) {
+            TagResolver resolver = MiniPlaceholders.getAudiencePlaceholders((Audience) player);
+            Component parsedMessage = MiniMessage.miniMessage().deserialize(hex, resolver);
+            hex = LegacyComponentSerializer.legacyAmpersand().serialize(parsedMessage);
+            TagResolver globalResolver = MiniPlaceholders.getGlobalPlaceholders();
+            Component parsedGlobalMessage = MiniMessage.miniMessage().deserialize(hex, globalResolver);
+            hex = LegacyComponentSerializer.legacyAmpersand().serialize(parsedGlobalMessage);
+        }
+        return hex.replace("&", "§");
+    }
+
+    private String convertHexColors(String message) {
+
+        if (!containsHexColor(message)) {
+            return message;
+        }
+
+        Pattern hexPattern = Pattern.compile("(#[A-Fa-f0-9]{6}|<#[A-Fa-f0-9]{6}>|&#[A-Fa-f0-9]{6})");
+        Matcher matcher = hexPattern.matcher(message);
+        StringBuffer buffer = new StringBuffer();
+        while (matcher.find()) {
+            String hexCode = matcher.group();
+            String colorCode = hexCode.substring(1, 7);
+            if (hexCode.startsWith("<#") && hexCode.endsWith(">")) {
+                colorCode = hexCode.substring(2, 8);
+            } else if (hexCode.startsWith("&#")) {
+                colorCode = hexCode.substring(2, 8);
+            }
+            String minecraftColorCode = translateHexToMinecraftColorCode(colorCode);
+            matcher.appendReplacement(buffer, minecraftColorCode);
+        }
+        matcher.appendTail(buffer);
+        return buffer.toString();
+    }
+
+    private String translateHexToMinecraftColorCode(String hex) {
+        char[] chars = hex.toCharArray();
+        return "§x" +
+                '§' + chars[0] +
+                '§' + chars[1] +
+                '§' + chars[2] +
+                '§' + chars[3] +
+                '§' + chars[4] +
+                '§' + chars[5];
+    }
+
+    private boolean containsHexColor(String message) {
+        String[] hexColorPattern = new String[]{"#[a-fA-F0-9]{6}", "&#[a-fA-F0-9]{6}", "<#[a-fA-F0-9]]{6}>"};
+        for (String pattern : hexColorPattern) {
+            if (Pattern.compile(pattern).matcher(message).find()) {
+                return true;
+            }
+        }
+        return false;
     }
 }

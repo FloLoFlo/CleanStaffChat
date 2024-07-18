@@ -2,14 +2,13 @@ package it.frafol.cleanstaffchat.bungee.staffchat.commands;
 
 import com.imaginarycode.minecraft.redisbungee.RedisBungeeAPI;
 import it.frafol.cleanstaffchat.bungee.CleanStaffChat;
-import it.frafol.cleanstaffchat.bungee.enums.BungeeCommandsConfig;
-import it.frafol.cleanstaffchat.bungee.enums.BungeeConfig;
-import it.frafol.cleanstaffchat.bungee.enums.BungeeMessages;
-import it.frafol.cleanstaffchat.bungee.enums.BungeeRedis;
+import it.frafol.cleanstaffchat.bungee.enums.*;
 import it.frafol.cleanstaffchat.bungee.objects.PlayerCache;
-import me.TechsCode.UltraPermissions.UltraPermissions;
 import me.TechsCode.UltraPermissions.UltraPermissionsAPI;
+import me.TechsCode.UltraPermissions.bungee.UltraPermissionsBungee;
 import me.TechsCode.UltraPermissions.storage.collection.UserList;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.luckperms.api.LuckPerms;
 import net.luckperms.api.LuckPermsProvider;
 import net.luckperms.api.model.user.User;
@@ -19,6 +18,7 @@ import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.plugin.Command;
 
+import java.awt.*;
 import java.util.Optional;
 
 public class AFKCommand extends Command {
@@ -31,27 +31,21 @@ public class AFKCommand extends Command {
     public void execute(CommandSender sender, String[] args) {
 
         if (!(sender instanceof ProxiedPlayer)) {
-            sender.sendMessage(TextComponent.fromLegacyText(BungeeMessages.PLAYER_ONLY.color()
+            sender.sendMessage(TextComponent.fromLegacy(BungeeMessages.PLAYER_ONLY.color()
                     .replace("%prefix%", BungeeMessages.PREFIX.color())));
             return;
         }
 
         if (!BungeeConfig.STAFFCHAT_AFK_MODULE.get(Boolean.class)) {
-
-            sender.sendMessage(TextComponent.fromLegacyText(BungeeMessages.MODULE_DISABLED.color()
+            sender.sendMessage(TextComponent.fromLegacy(BungeeMessages.MODULE_DISABLED.color()
                     .replace("%prefix%", BungeeMessages.PREFIX.color())));
-
             return;
-
         }
 
         if (!sender.hasPermission(BungeeConfig.STAFFCHAT_AFK_PERMISSION.get(String.class))) {
-
-            sender.sendMessage(TextComponent.fromLegacyText(BungeeMessages.NO_PERMISSION.color()
+            sender.sendMessage(TextComponent.fromLegacy(BungeeMessages.NO_PERMISSION.color()
                     .replace("%prefix%", BungeeMessages.PREFIX.color())));
-
             return;
-
         }
 
         if (!PlayerCache.getAfk().contains(((ProxiedPlayer) sender).getUniqueId())) {
@@ -61,7 +55,10 @@ public class AFKCommand extends Command {
 
                 final User user = api.getUserManager().getUser(((ProxiedPlayer) sender).getUniqueId());
 
-                if (user == null) {return;}
+                if (user == null) {
+                    return;
+                }
+
                 final String prefix = user.getCachedData().getMetaData().getPrefix();
                 final String suffix = user.getCachedData().getMetaData().getSuffix();
                 final String user_prefix = prefix == null ? "" : prefix;
@@ -81,14 +78,13 @@ public class AFKCommand extends Command {
                             .replace("&", "§");
 
                     redisBungeeAPI.sendChannelMessage("CleanStaffChat-StaffAFKMessage-RedisBungee", final_message);
-
                     return;
                 }
 
                     CleanStaffChat.getInstance().getProxy().getPlayers().stream().filter
                                     (players -> players.hasPermission(BungeeConfig.STAFFCHAT_USE_PERMISSION.get(String.class))
                                             && !(PlayerCache.getToggled().contains(players.getUniqueId())))
-                            .forEach(players -> players.sendMessage(TextComponent.fromLegacyText(BungeeMessages.STAFFCHAT_AFK_ON.color()
+                            .forEach(players -> players.sendMessage(TextComponent.fromLegacy(BungeeMessages.STAFFCHAT_AFK_ON.color()
                                     .replace("%prefix%", BungeeMessages.PREFIX.color())
                                     .replace("%user%", sender.getName())
                                     .replace("%displayname%", PlayerCache.translateHex(user_prefix) + sender.getName() + PlayerCache.translateHex(user_suffix))
@@ -98,7 +94,7 @@ public class AFKCommand extends Command {
 
                 } else if (ProxyServer.getInstance().getPluginManager().getPlugin("UltraPermissions") != null) {
 
-                    final UltraPermissionsAPI ultraPermissionsAPI = UltraPermissions.getAPI();
+                    final UltraPermissionsAPI ultraPermissionsAPI = UltraPermissionsBungee.getAPI();
                     final UserList userList = ultraPermissionsAPI.getUsers();
 
                     if (!userList.uuid(((ProxiedPlayer) sender).getUniqueId()).isPresent()) {
@@ -126,15 +122,13 @@ public class AFKCommand extends Command {
                                 .replace("&", "§");
 
                         redisBungeeAPI.sendChannelMessage("CleanStaffChat-StaffAFKMessage-RedisBungee", final_message);
-
                         return;
-
                     }
 
                     CleanStaffChat.getInstance().getProxy().getPlayers().stream().filter
                                     (players -> players.hasPermission(BungeeConfig.STAFFCHAT_USE_PERMISSION.get(String.class))
                                             && !(PlayerCache.getToggled().contains(players.getUniqueId())))
-                            .forEach(players -> players.sendMessage(TextComponent.fromLegacyText(BungeeMessages.STAFFCHAT_AFK_ON.color()
+                            .forEach(players -> players.sendMessage(TextComponent.fromLegacy(BungeeMessages.STAFFCHAT_AFK_ON.color()
                                     .replace("%prefix%", BungeeMessages.PREFIX.color())
                                     .replace("%user%", sender.getName())
                                     .replace("%displayname%", ultraPermissionsUserPrefixFinal + sender.getName() + ultraPermissionsUserSuffixFinal)
@@ -158,15 +152,13 @@ public class AFKCommand extends Command {
                             .replace("&", "§");
 
                     redisBungeeAPI.sendChannelMessage("CleanStaffChat-StaffAFKMessage-RedisBungee", final_message);
-
                     return;
-
                 }
 
                 CleanStaffChat.getInstance().getProxy().getPlayers().stream().filter
                                 (players -> players.hasPermission(BungeeConfig.STAFFCHAT_USE_PERMISSION.get(String.class))
                                         && !(PlayerCache.getToggled().contains(players.getUniqueId())))
-                        .forEach(players -> players.sendMessage(TextComponent.fromLegacyText(BungeeMessages.STAFFCHAT_AFK_ON.color()
+                        .forEach(players -> players.sendMessage(TextComponent.fromLegacy(BungeeMessages.STAFFCHAT_AFK_ON.color()
                                 .replace("%prefix%", BungeeMessages.PREFIX.color())
                                 .replace("%user%", sender.getName())
                                 .replace("%userprefix%", "")
@@ -175,8 +167,36 @@ public class AFKCommand extends Command {
                                 .replace("%displayname%", sender.getName()))));
 
             }
-
             PlayerCache.getAfk().add(((ProxiedPlayer) sender).getUniqueId());
+            if (BungeeDiscordConfig.DISCORD_ENABLED.get(Boolean.class)
+                    && BungeeConfig.STAFFCHAT_DISCORD_MODULE.get(Boolean.class)
+                    && BungeeConfig.STAFFCHAT_DISCORD_AFK_MODULE.get(Boolean.class)) {
+
+                final TextChannel channel = CleanStaffChat.getInstance().getJda().getTextChannelById(BungeeDiscordConfig.STAFF_CHANNEL_ID.get(String.class));
+
+                if (channel == null) {
+                    return;
+                }
+
+                if (BungeeDiscordConfig.USE_EMBED.get(Boolean.class)) {
+
+                    EmbedBuilder embed = new EmbedBuilder();
+
+                    embed.setTitle(BungeeDiscordConfig.STAFFCHAT_EMBED_TITLE.get(String.class), null);
+
+                    embed.setDescription(BungeeMessages.STAFF_DISCORD_AFK_ON_MESSAGE_FORMAT.get(String.class)
+                            .replace("%user%", sender.getName()));
+
+                    embed.setColor(Color.getColor(BungeeDiscordConfig.EMBEDS_STAFFCHATCOLOR.get(String.class)));
+                    embed.setFooter(BungeeDiscordConfig.EMBEDS_FOOTER.get(String.class), null);
+
+                    channel.sendMessageEmbeds(embed.build()).queue();
+
+                } else {
+                    channel.sendMessageFormat(BungeeMessages.STAFF_DISCORD_AFK_ON_MESSAGE_FORMAT.get(String.class)
+                            .replace("%user%", sender.getName())).queue();
+                }
+            }
 
         } else {
 
@@ -186,7 +206,10 @@ public class AFKCommand extends Command {
 
                 final User user = api.getUserManager().getUser(((ProxiedPlayer) sender).getUniqueId());
 
-                if (user == null) {return;}
+                if (user == null) {
+                    return;
+                }
+
                 final String prefix = user.getCachedData().getMetaData().getPrefix();
                 final String suffix = user.getCachedData().getMetaData().getSuffix();
                 final String user_prefix = prefix == null ? "" : prefix;
@@ -206,15 +229,13 @@ public class AFKCommand extends Command {
                             .replace("&", "§");
 
                     redisBungeeAPI.sendChannelMessage("CleanStaffChat-StaffAFKMessage-RedisBungee", final_message);
-
                     return;
-
                 }
 
                 CleanStaffChat.getInstance().getProxy().getPlayers().stream().filter
                                 (players -> players.hasPermission(BungeeConfig.STAFFCHAT_USE_PERMISSION.get(String.class))
                                         && !(PlayerCache.getToggled().contains(players.getUniqueId())))
-                        .forEach(players -> players.sendMessage(TextComponent.fromLegacyText(BungeeMessages.STAFFCHAT_AFK_OFF.color()
+                        .forEach(players -> players.sendMessage(TextComponent.fromLegacy(BungeeMessages.STAFFCHAT_AFK_OFF.color()
                                 .replace("%prefix%", BungeeMessages.PREFIX.color())
                                 .replace("%user%", sender.getName())
                                 .replace("%displayname%", PlayerCache.translateHex(user_prefix) + sender.getName() + PlayerCache.translateHex(user_suffix))
@@ -238,15 +259,13 @@ public class AFKCommand extends Command {
                             .replace("&", "§");
 
                     redisBungeeAPI.sendChannelMessage("CleanStaffChat-StaffAFKMessage-RedisBungee", final_message);
-
                     return;
-
                 }
 
                 CleanStaffChat.getInstance().getProxy().getPlayers().stream().filter
                                 (players -> players.hasPermission(BungeeConfig.STAFFCHAT_USE_PERMISSION.get(String.class))
                                         && !(PlayerCache.getToggled().contains(players.getUniqueId())))
-                        .forEach(players -> players.sendMessage(TextComponent.fromLegacyText(BungeeMessages.STAFFCHAT_AFK_OFF.color()
+                        .forEach(players -> players.sendMessage(TextComponent.fromLegacy(BungeeMessages.STAFFCHAT_AFK_OFF.color()
                                 .replace("%prefix%", BungeeMessages.PREFIX.color())
                                 .replace("%user%", sender.getName())
                                 .replace("%userprefix%", "")
@@ -255,9 +274,36 @@ public class AFKCommand extends Command {
                                 .replace("%displayname%", sender.getName()))));
 
             }
-
             PlayerCache.getAfk().remove(((ProxiedPlayer) sender).getUniqueId());
+            if (BungeeDiscordConfig.DISCORD_ENABLED.get(Boolean.class)
+                    && BungeeConfig.STAFFCHAT_DISCORD_MODULE.get(Boolean.class)
+                    && BungeeConfig.STAFFCHAT_DISCORD_AFK_MODULE.get(Boolean.class)) {
 
+                final TextChannel channel = CleanStaffChat.getInstance().getJda().getTextChannelById(BungeeDiscordConfig.STAFF_CHANNEL_ID.get(String.class));
+
+                if (channel == null) {
+                    return;
+                }
+
+                if (BungeeDiscordConfig.USE_EMBED.get(Boolean.class)) {
+
+                    EmbedBuilder embed = new EmbedBuilder();
+
+                    embed.setTitle(BungeeDiscordConfig.STAFFCHAT_EMBED_TITLE.get(String.class), null);
+
+                    embed.setDescription(BungeeMessages.STAFF_DISCORD_AFK_OFF_MESSAGE_FORMAT.get(String.class)
+                            .replace("%user%", sender.getName()));
+
+                    embed.setColor(Color.getColor(BungeeDiscordConfig.EMBEDS_STAFFCHATCOLOR.get(String.class)));
+                    embed.setFooter(BungeeDiscordConfig.EMBEDS_FOOTER.get(String.class), null);
+
+                    channel.sendMessageEmbeds(embed.build()).queue();
+
+                } else {
+                    channel.sendMessageFormat(BungeeMessages.STAFF_DISCORD_AFK_OFF_MESSAGE_FORMAT.get(String.class)
+                            .replace("%user%", sender.getName())).queue();
+                }
+            }
         }
     }
 }

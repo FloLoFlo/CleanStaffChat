@@ -4,7 +4,7 @@
 #  \___)(____)(____)(__)(__)(_)\_)  (___/ \___)
 #
 # Configuration file. Made with ❤ by frafol.
-# For support: discord.io/futuredevelopment
+# For support: https://dsc.gg/futuredevelopment
 
 settings:
 
@@ -13,7 +13,6 @@ settings:
   console_name: "Console"
 
   reload_permission: "staffchat.reload"
-  stafflist_permission: "stafflist.use"
 
   use_staffchat: true
   use_adminchat: true
@@ -21,6 +20,13 @@ settings:
 
   # Hides the (This server is using CleanStaffChat by frafol) message.
   hide_advertisements: false
+
+  globalchat:
+
+    # You can customise permissions.
+    global_mutechat_permission: "globalchat.mute"
+    global_mutechat_all_permission: "globalchat.mute.all"
+    global_mutechat_bypass_permission: "globalchat.mute.bypass"
 
   staffchat:
 
@@ -36,6 +42,7 @@ settings:
 
     staff_join_silent: false # By activating it, the staff will not receive a message when another staff member with a permission enters the server.
     staff_quit_silent: false # By activating it, the staff will not receive a message when another staff member with a permission leaves the server.
+    staff_switch_silent: false # By activating it, the staff will not receive a message when another staff member with a permission changes server. (Velocity and BungeeCord only)
 
     # You can customise permissions.
     staffchat_use_permission: "staffchat.use"
@@ -44,6 +51,7 @@ settings:
     staffchat_afk_permission: "staffchat.afk"
     staffchat_join_silent_permission: "staffchat.join.silent"
     staffchat_quit_silent_permission: "staffchat.quit.silent"
+    staffchat_switch_silent_permission: "staffchat.switch.silent"
 
   adminchat:
 
@@ -66,6 +74,21 @@ settings:
     donorchat_afk_permission: "donorchat.afk"
     donorchat_cooldown_bypass_permission: "donorchat.bypass"
 
+  stafflist:
+
+    # You can customise permissions.
+    stafflist_permission: "stafflist.use"
+    stafflist_show_permission: "stafflist.show"
+    stafflist_bypass_permission: "stafflist.bypass"
+
+    # You can enable or disable the bypass permission.
+    bypass_enabled: true
+
+    # Select if you want to sort the staff list by group weight.
+    # Set a weight in LP using: /lp group <group> setweight <weight>.
+    # Groups with major weight will be at the top of the list.
+    sorting: true
+
   # By activating this option, you will not be able to send messages with formatting codes (&c, &f etc.).
   # Can also fix blank messages.
   prevent_color_codes: false
@@ -73,8 +96,20 @@ settings:
 modules:
 
   update_check: true
-  auto_update: true
+  auto_update: false
   stats: true
+
+  # WARNING: This option is only for the Velocity version.
+  minimessage_support: false
+
+  # EXPERIMENTAL: This option is only for the Paper/Velocity version.
+  miniplaceholders_support: false
+
+  # SuperVanish support is only for the Bukkit version.
+  premiumvanish_hook: true
+  supervanish_hook: true
+
+  globalchat_mute_command_module: true
 
   staffchat_switch_module: true
   staffchat_afk_module: true
@@ -83,6 +118,8 @@ modules:
   staffchat_toggle_module: true
   staffchat_discord_module: true
   staffchat_discord_join_leave_module: true
+  staffchat_discord_switch_module: true
+  staffchat_discord_afk_module: true
 
   adminchat_switch_module: true
   adminchat_afk_module: true
@@ -99,5 +136,19 @@ modules:
   donorchat_discord_module: true
 
   stafflist_module: true
+
+  # Are you getting kicked on BungeeCord when switching staffchat mode to globalchat mode?
+  # You have to activate this option to fix it, please follow these steps:
+  # 1. Add this plugin in Spigot and BungeeCord servers.
+  # 2. Activate this option in both servers (this option will disable all staffchat modules in Spigot also).
+  # 3. Your problem is now fixed, note that Velocity is not affected by this issue if you install SignedVelocity in both Velocity and Spigot server.
+  kick_workaround: false
+
+  # Are you getting double messages on Velocity when talking in staffchat/adminchat/donorchat?
+  # You have to activate this option to fix it, please follow these steps:
+  # 1. Add this plugin in Spigot and Velocity servers.
+  # 2. Activate this option in both servers (this option will disable all staffchat modules in Spigot also).
+  # 3. Your problem is now fixed, note that BungeeCord is not affected by this issue.
+  double_message_workaround: false
 
 # Enjoy.

@@ -4,12 +4,15 @@
 #  \___)(____)(____)(__)(__)(_)\_)  (___/ \___)
 #
 # Discord configuration. Made with ❤ by frafol.
-# For support: discord.io/futuredevelopment
+# For support: https://dsc.gg/futuredevelopment
 
 discord: # The Discord Integration is an experimental feature, report all problems on our Discord.
 
   # Toggle discord feature.
   enabled: false
+
+  # Select if send to chat the messages sent by bots in the channels.
+  forward_bot_messages: false
 
   # Your Discord bot's token.
   token: ""
@@ -29,15 +32,26 @@ discord: # The Discord Integration is an experimental feature, report all proble
   # To use donorchat with Discord, enter the ID of the chat where you want messages to be sent.
   donorchat_channel_id: ""
 
-  # To use stafflist with Discord, enter the ID of the chat where you want messages to be sent.ù
+  # To use stafflist with Discord, enter the ID of the chat where you want messages to be sent.
   # This enables /stafflist command on Discord, leave "none" to disable this feature.
   stafflist_channel_id: ""
 
   # NOTE: If you do not want to use a certain chat, disable it from modules.
   # You will not have to enter any channel ids if you deactivate them.
 
-  # Use embeds instead of messages.
-  use_embeds: true
+  # Embeds configuration.
+  embeds:
+
+    # Use embeds instead of messages.
+    use_embeds: true
+
+    # Embeds color.
+    staffchat_color: "0x00ff00"
+    adminchat_color: "0xff0000"
+    donorchat_color: "0x0000ff"
+
+    # Embeds footer.
+    footer: "Powered by CleanStaffChat"
 
   # The 'title' of the embed message sent on Discord.
   staffchat_embed_title: "StaffChat"

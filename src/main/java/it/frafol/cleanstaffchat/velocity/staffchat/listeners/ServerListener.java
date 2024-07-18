@@ -6,15 +6,22 @@ import com.velocitypowered.api.event.player.ServerConnectedEvent;
 import com.velocitypowered.api.proxy.Player;
 import it.frafol.cleanstaffchat.velocity.CleanStaffChat;
 import it.frafol.cleanstaffchat.velocity.enums.VelocityConfig;
+import it.frafol.cleanstaffchat.velocity.enums.VelocityDiscordConfig;
 import it.frafol.cleanstaffchat.velocity.enums.VelocityMessages;
 import it.frafol.cleanstaffchat.velocity.enums.VelocityRedis;
 import it.frafol.cleanstaffchat.velocity.objects.Placeholder;
 import it.frafol.cleanstaffchat.velocity.objects.PlayerCache;
 import it.frafol.cleanstaffchat.velocity.utils.ChatUtil;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.luckperms.api.LuckPerms;
 import net.luckperms.api.LuckPermsProvider;
 import net.luckperms.api.model.user.User;
 import org.jetbrains.annotations.NotNull;
+
+import java.awt.*;
+
+import static it.frafol.cleanstaffchat.velocity.enums.VelocityConfig.instance;
 
 public class ServerListener {
 
@@ -69,16 +76,14 @@ public class ServerListener {
 
 
                         final RedisBungeeAPI redisBungeeAPI = RedisBungeeAPI.getRedisBungeeApi();
-
                         redisBungeeAPI.sendChannelMessage("CleanStaffChat-StaffAFKMessage-RedisBungee", final_message);
-
                         return;
-
                     }
 
                     CleanStaffChat.getInstance().getServer().getAllPlayers().stream().filter
                                     (players -> players.hasPermission(VelocityConfig.STAFFCHAT_AFK_PERMISSION.get(String.class))
-                                            && !(PlayerCache.getToggled().contains(players.getUniqueId())))
+                                            && !(PlayerCache.getToggled().contains(players.getUniqueId()))
+                                            && !instance.isInBlockedStaffChatServer(players))
                             .forEach(players -> VelocityMessages.STAFFCHAT_AFK_OFF.send(players,
                                     new Placeholder("user", event.getPlayer().getUsername()),
                                     new Placeholder("displayname", ChatUtil.translateHex(user_prefix) + event.getPlayer() + ChatUtil.translateHex(user_suffix)),
@@ -102,31 +107,59 @@ public class ServerListener {
 
 
                         final RedisBungeeAPI redisBungeeAPI = RedisBungeeAPI.getRedisBungeeApi();
-
                         redisBungeeAPI.sendChannelMessage("CleanStaffChat-StaffAFKMessage-RedisBungee", final_message);
-
                         return;
-
                     }
 
                     CleanStaffChat.getInstance().getServer().getAllPlayers().stream().filter
                                     (players -> players.hasPermission(VelocityConfig.STAFFCHAT_AFK_PERMISSION.get(String.class))
-                                            && !(PlayerCache.getToggled().contains(players.getUniqueId())))
+                                            && !(PlayerCache.getToggled().contains(players.getUniqueId()))
+                                            && !instance.isInBlockedStaffChatServer(players))
                             .forEach(players -> VelocityMessages.STAFFCHAT_AFK_OFF.send(players,
                                     new Placeholder("user", event.getPlayer().getUsername()),
                                     new Placeholder("displayname", event.getPlayer().getUsername()),
                                     new Placeholder("userprefix", ""),
                                     new Placeholder("usersuffix", ""),
                                     new Placeholder("prefix", VelocityMessages.PREFIX.color())));
-
                 }
 
                 PlayerCache.getAfk().remove(event.getPlayer().getUniqueId());
+                if (VelocityDiscordConfig.DISCORD_ENABLED.get(Boolean.class)
+                        && VelocityConfig.STAFFCHAT_DISCORD_MODULE.get(Boolean.class)
+                        && VelocityConfig.STAFFCHAT_DISCORD_AFK_MODULE.get(Boolean.class)) {
 
+                    final TextChannel channel = PLUGIN.getJda().JdaWorker().getTextChannelById(VelocityDiscordConfig.STAFF_CHANNEL_ID.get(String.class));
+
+                    if (channel == null) {
+                        return;
+                    }
+
+                    if (VelocityDiscordConfig.USE_EMBED.get(Boolean.class)) {
+
+                        EmbedBuilder embed = new EmbedBuilder();
+
+                        embed.setTitle(VelocityDiscordConfig.STAFFCHAT_EMBED_TITLE.get(String.class), null);
+
+                        embed.setDescription(VelocityMessages.STAFF_DISCORD_AFK_OFF_MESSAGE_FORMAT.get(String.class)
+                                .replace("%user%", event.getPlayer().getUsername()));
+
+                        embed.setColor(Color.getColor(VelocityDiscordConfig.EMBEDS_STAFFCHATCOLOR.get(String.class)));
+                        embed.setFooter(VelocityDiscordConfig.EMBEDS_FOOTER.get(String.class), null);
+
+                        channel.sendMessageEmbeds(embed.build()).queue();
+
+                    } else {
+
+                        channel.sendMessageFormat(VelocityMessages.STAFF_DISCORD_AFK_OFF_MESSAGE_FORMAT.get(String.class)
+                                        .replace("%user%", event.getPlayer().getUsername()))
+                                .queue();
+
+                    }
+                }
             }
         }
 
-        if (!(CleanStaffChat.getInstance().getServer().getAllPlayers().size() < 1)) {
+        if (!(CleanStaffChat.getInstance().getServer().getAllPlayers().isEmpty())) {
 
             final Player player = event.getPlayer();
 
@@ -134,6 +167,10 @@ public class ServerListener {
 
                 if (player.hasPermission(VelocityConfig.STAFFCHAT_USE_PERMISSION.get(String.class))
                         || VelocityConfig.STAFFCHAT_SWITCH_ALL.get(Boolean.class)) {
+
+                    if (VelocityConfig.STAFFCHAT_SWITCH_SILENT_MODULE.get(Boolean.class) && player.hasPermission(VelocityConfig.STAFFCHAT_SWITCH_SILENT_PERMISSION.get(String.class))) {
+                        return;
+                    }
 
                     if (PLUGIN.getServer().getPluginManager().isLoaded("luckperms")) {
 
@@ -173,7 +210,8 @@ public class ServerListener {
 
                         CleanStaffChat.getInstance().getServer().getAllPlayers().stream().filter
                                         (players -> players.hasPermission(VelocityConfig.STAFFCHAT_USE_PERMISSION.get(String.class))
-                                                && !(PlayerCache.getToggled().contains(players.getUniqueId())))
+                                                && !(PlayerCache.getToggled().contains(players.getUniqueId()))
+                                                && !instance.isInBlockedStaffChatServer(players))
                                 .forEach(players -> VelocityMessages.STAFF_SWITCH_MESSAGE_FORMAT.send(players,
                                         new Placeholder("user", player.getUsername()),
                                         new Placeholder("prefix", VelocityMessages.PREFIX.color()),
@@ -199,16 +237,14 @@ public class ServerListener {
 
 
                             final RedisBungeeAPI redisBungeeAPI = RedisBungeeAPI.getRedisBungeeApi();
-
                             redisBungeeAPI.sendChannelMessage("CleanStaffChat-StaffOtherMessage-RedisBungee", final_message);
-
                             return;
-
                         }
 
                         CleanStaffChat.getInstance().getServer().getAllPlayers().stream().filter
                                         (players -> players.hasPermission(VelocityConfig.STAFFCHAT_USE_PERMISSION.get(String.class))
-                                                && !(PlayerCache.getToggled().contains(players.getUniqueId())))
+                                                && !(PlayerCache.getToggled().contains(players.getUniqueId()))
+                                                && !instance.isInBlockedStaffChatServer(players))
                                 .forEach(players -> VelocityMessages.STAFF_SWITCH_MESSAGE_FORMAT.send(players,
                                         new Placeholder("user", player.getUsername()),
                                         new Placeholder("prefix", VelocityMessages.PREFIX.color()),
@@ -218,6 +254,40 @@ public class ServerListener {
                                         new Placeholder("serverbefore", event.getPreviousServer().get().getServerInfo().getName()),
                                         new Placeholder("server", event.getServer().getServerInfo().getName())));
 
+                    }
+
+                    if (VelocityDiscordConfig.DISCORD_ENABLED.get(Boolean.class)
+                            && VelocityConfig.STAFFCHAT_DISCORD_MODULE.get(Boolean.class)
+                            && VelocityConfig.STAFFCHAT_DISCORD_SWITCH_MODULE.get(Boolean.class)) {
+
+                        final TextChannel channel = PLUGIN.getJda().JdaWorker().getTextChannelById(VelocityDiscordConfig.STAFF_CHANNEL_ID.get(String.class));
+
+                        if (channel == null) {
+                            return;
+                        }
+
+                        if (VelocityDiscordConfig.USE_EMBED.get(Boolean.class)) {
+
+                            EmbedBuilder embed = new EmbedBuilder();
+
+                            embed.setTitle(VelocityDiscordConfig.STAFFCHAT_EMBED_TITLE.get(String.class), null);
+
+                            embed.setDescription(VelocityMessages.STAFF_DISCORD_SWITCH_MESSAGE_FORMAT.get(String.class)
+                                    .replace("%user%", player.getUsername())
+                                    .replace("%from%", event.getPreviousServer().get().getServerInfo().getName())
+                                    .replace("%server%", event.getServer().getServerInfo().getName()));
+
+                            embed.setColor(Color.getColor(VelocityDiscordConfig.EMBEDS_STAFFCHATCOLOR.get(String.class)));
+                            embed.setFooter(VelocityDiscordConfig.EMBEDS_FOOTER.get(String.class), null);
+
+                            channel.sendMessageEmbeds(embed.build()).queue();
+
+                        } else {
+                            channel.sendMessageFormat(VelocityMessages.STAFF_DISCORD_SWITCH_MESSAGE_FORMAT.get(String.class)
+                                    .replace("%user%", player.getUsername())
+                                    .replace("%from%", event.getPreviousServer().get().getServerInfo().getName())
+                                    .replace("%server%", event.getServer().getServerInfo().getName())).queue();
+                        }
                     }
                 }
             }

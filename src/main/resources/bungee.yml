@@ -6,3 +6,5 @@ softDepends:
   - RedisBungee
   - LuckPerms
   - UltraPermissions
+  - PremiumVanish
+  - Spicord

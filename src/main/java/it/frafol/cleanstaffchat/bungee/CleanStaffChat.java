@@ -1,12 +1,14 @@
 package it.frafol.cleanstaffchat.bungee;
 
+import com.alessiodp.libby.BungeeLibraryManager;
+import com.alessiodp.libby.Library;
+import com.alessiodp.libby.relocation.Relocation;
 import com.imaginarycode.minecraft.redisbungee.RedisBungeeAPI;
+import de.myzelyam.api.vanish.BungeeVanishAPI;
 import it.frafol.cleanstaffchat.bungee.adminchat.commands.AdminChatCommand;
 import it.frafol.cleanstaffchat.bungee.donorchat.commands.DonorChatCommand;
-import it.frafol.cleanstaffchat.bungee.enums.BungeeConfig;
-import it.frafol.cleanstaffchat.bungee.enums.BungeeDiscordConfig;
-import it.frafol.cleanstaffchat.bungee.enums.BungeeRedis;
-import it.frafol.cleanstaffchat.bungee.enums.BungeeVersion;
+import it.frafol.cleanstaffchat.bungee.enums.*;
+import it.frafol.cleanstaffchat.bungee.general.commands.MuteChatCommand;
 import it.frafol.cleanstaffchat.bungee.hooks.RedisListener;
 import it.frafol.cleanstaffchat.bungee.objects.TextFile;
 import it.frafol.cleanstaffchat.bungee.staffchat.commands.DebugCommand;
@@ -14,10 +16,8 @@ import it.frafol.cleanstaffchat.bungee.staffchat.commands.ReloadCommand;
 import it.frafol.cleanstaffchat.bungee.staffchat.listeners.ChatListener;
 import it.frafol.cleanstaffchat.bungee.staffchat.listeners.JoinListener;
 import it.frafol.cleanstaffchat.bungee.staffchat.listeners.ServerListener;
+import lombok.Getter;
 import lombok.SneakyThrows;
-import net.byteflux.libby.BungeeLibraryManager;
-import net.byteflux.libby.Library;
-import net.byteflux.libby.relocation.Relocation;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Activity;
@@ -37,23 +37,25 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.concurrent.TimeUnit;
 
+@Getter
 public class CleanStaffChat extends Plugin {
 
     private JDA jda;
+
     private TextFile configTextFile;
     private TextFile messagesTextFile;
     private TextFile discordTextFile;
     private TextFile aliasesTextFile;
     private TextFile redisTextFile;
+    private TextFile serversTextFile;
     private TextFile versionTextFile;
 
     public boolean updated = false;
 
-    public static CleanStaffChat instance;
+    private final boolean getSpicord = getProxy().getPluginManager().getPlugin("Spicord") != null;
 
-    public static CleanStaffChat getInstance() {
-        return instance;
-    }
+    @Getter
+    public static CleanStaffChat instance;
 
     @SneakyThrows
     @Override
@@ -64,25 +66,30 @@ public class CleanStaffChat extends Plugin {
         BungeeLibraryManager bungeeLibraryManager = new BungeeLibraryManager(this);
 
         Library yaml;
+        final Relocation yamlrelocation = new Relocation("yaml", "it{}frafol{}libs{}yaml");
         yaml = Library.builder()
                 .groupId("me{}carleslc{}Simple-YAML")
                 .artifactId("Simple-Yaml")
                 .version("1.8.4")
+                .relocate(yamlrelocation)
                 .build();
 
+        final Relocation updaterrelocation = new Relocation("updater", "it{}frafol{}libs{}updater");
         Library updater = Library.builder()
                 .groupId("ru{}vyarus")
                 .artifactId("yaml-config-updater")
                 .version("1.4.2")
+                .relocate(updaterrelocation)
                 .build();
 
+        // JDA should be beta.18 because of Java 8 incompatibility.
         final Relocation kotlin = new Relocation("kotlin", "it{}frafol{}libs{}kotlin");
         Library discord = Library.builder()
                 .groupId("net{}dv8tion")
                 .artifactId("JDA")
-                .version("5.0.0-beta.12")
+                .version("5.0.0-beta.18")
                 .relocate(kotlin)
-                .url("https://github.com/DV8FromTheWorld/JDA/releases/download/v5.0.0-beta.12/JDA-5.0.0-beta.12-withDependencies-min.jar")
+                .url("https://github.com/DV8FromTheWorld/JDA/releases/download/v5.0.0-beta.18/JDA-5.0.0-beta.18-withDependencies-min.jar")
                 .build();
 
         bungeeLibraryManager.addMavenCentral();
@@ -99,6 +106,7 @@ public class CleanStaffChat extends Plugin {
                     .artifactId("Simple-Yaml")
                     .version("1.8.4")
                     .url("https://github.com/Carleslc/Simple-YAML/releases/download/1.8.4/Simple-Yaml-1.8.4.jar")
+                    .relocate(yamlrelocation)
                     .build();
         }
 
@@ -109,73 +117,62 @@ public class CleanStaffChat extends Plugin {
                 "( (__  )(__  )__)  /(__)\\  )  (   \\__ \\( (__ \n" +
                 " \\___)(____)(____)(__)(__)(_)\\_)  (___/ \\___)\n");
 
+        getLogger().info("Server version: " + getProxy().getVersion());
+        checkIncompatibilities();
+
         loadFiles();
         updateConfig();
         getLogger().info("§7Configurations loaded §dsuccessfully§7!");
 
-        if (BungeeDiscordConfig.DISCORD_ENABLED.get(Boolean.class)) {
-
-            jda = JDABuilder.createDefault(BungeeDiscordConfig.DISCORD_TOKEN.get(String.class)).enableIntents(GatewayIntent.MESSAGE_CONTENT).build();
-            updateJDATask();
-
-            getLogger().info("§7Hooked into Discord §dsuccessfully§7!");
-
+        if (BungeeConfig.UPDATE_CHECK.get(Boolean.class)) {
+            UpdateChecker();
         }
+
+        startJDA();
 
         getProxy().getPluginManager().registerCommand(this, new ReloadCommand());
         getProxy().getPluginManager().registerCommand(this, new DebugCommand(this));
+        getProxy().getPluginManager().registerListener(this, new DebugCommand(this));
 
         if (BungeeConfig.STAFFLIST_MODULE.get(Boolean.class)) {
-
             registerStaffList();
-
         }
 
         if (BungeeConfig.STAFFCHAT.get(Boolean.class)) {
-
             registerStaffChat();
-
         }
 
         if (BungeeConfig.ADMINCHAT.get(Boolean.class)) {
-
             registerAdminChat();
-
         }
 
         if (BungeeConfig.DONORCHAT.get(Boolean.class)) {
-
             registerDonorChat();
+        }
 
+        if (BungeeConfig.MUTECHAT_MODULE.get(Boolean.class)) {
+            registerMuteChat();
         }
 
         if (BungeeRedis.REDIS_ENABLE.get(Boolean.class) && getProxy().getPluginManager().getPlugin("RedisBungee") == null) {
-
             getLogger().severe("RedisBungee was not found, the RedisBungee hook won't work.");
-
         }
 
         if (BungeeRedis.REDIS_ENABLE.get(Boolean.class) && getProxy().getPluginManager().getPlugin("RedisBungee") != null) {
-
             registerRedisBungee();
-
             getLogger().info("§7Hooked into RedisBungee §dsuccessfully§7!");
+        }
 
+        if (isPremiumVanish()) {
+            getLogger().info("§7Hooked into PremiumVanish §dsuccessfully§7!");
         }
 
         if (BungeeConfig.STATS.get(Boolean.class)) {
-
             new Metrics(this, 16449);
-
             getLogger().info("§7Metrics loaded §asuccessfully§7!");
         }
 
-        if (BungeeConfig.UPDATE_CHECK.get(Boolean.class)) {
-
-            UpdateChecker();
-
-        }
-
+        getProxy().registerChannel("cleansc:cancel");
         getLogger().info("§7Plugin successfully §denabled§7!");
     }
 
@@ -199,12 +196,18 @@ public class CleanStaffChat extends Plugin {
         return getInstance().redisTextFile.getConfig();
     }
 
+    public YamlFile getServersTextFile() {
+        return getInstance().serversTextFile.getConfig();
+    }
+
     public YamlFile getVersionTextFile() {
         return getInstance().versionTextFile.getConfig();
     }
 
-    public JDA getJda() {
-        return jda;
+    private void checkIncompatibilities() {
+        if (getSpicord) {
+            getLogger().severe("Spicord found, this plugin is completely unsupported and you won't receive any support.");
+        }
     }
 
     @Override
@@ -218,7 +221,23 @@ public class CleanStaffChat extends Plugin {
         instance = null;
         configTextFile = null;
 
+        getProxy().unregisterChannel("cleansc:cancel");
         getLogger().info("§7Successfully §ddisabled§7.");
+    }
+
+    public void startJDA() {
+        if (BungeeDiscordConfig.DISCORD_ENABLED.get(Boolean.class)) {
+
+            try {
+                jda = JDABuilder.createDefault(BungeeDiscordConfig.DISCORD_TOKEN.get(String.class)).enableIntents(GatewayIntent.MESSAGE_CONTENT).build();
+            } catch (ExceptionInInitializerError e) {
+                getLogger().severe("Invalid Discord configuration, please check your discord.yml file.");
+                getLogger().severe("Make sure you are not using any strange forks (like Aegis).");
+            }
+
+            updateJDATask();
+            getLogger().info("§7Hooked into Discord §dsuccessfully§7!");
+        }
     }
 
     private void UpdateChecker() {
@@ -263,7 +282,9 @@ public class CleanStaffChat extends Plugin {
                 }
 
                 if (!updated) {
-                    player.sendMessage(TextComponent.fromLegacyText("§e[CleanStaffChat] There is a new update available, download it on SpigotMC!"));
+                    player.sendMessage(TextComponent.fromLegacy(BungeeMessages.UPDATE.color()
+                            .replace("%version%", version)
+                            .replace("%prefix%", BungeeMessages.PREFIX.color())));
                 }
             }
         });
@@ -287,6 +308,9 @@ public class CleanStaffChat extends Plugin {
                     .backup(true)
                     .update();
             YamlUpdater.create(new File(getDataFolder().toPath() + "/aliases.yml"), FileUtils.findFile("https://raw.githubusercontent.com/frafol/CleanStaffChat/main/src/main/resources/aliases.yml"))
+                    .backup(true)
+                    .update();
+            YamlUpdater.create(new File(getDataFolder().toPath() + "/servers.yml"), FileUtils.findFile("https://raw.githubusercontent.com/frafol/CleanStaffChat/main/src/main/resources/servers.yml"))
                     .backup(true)
                     .update();
             versionTextFile.getConfig().set("version", getDescription().getVersion());
@@ -339,10 +363,15 @@ public class CleanStaffChat extends Plugin {
 
     }
 
+    private void registerMuteChat() {
+        getProxy().getPluginManager().registerCommand(this, new MuteChatCommand());
+        getProxy().getPluginManager().registerListener(this, new it.frafol.cleanstaffchat.bungee.general.listeners.ChatListener(this));
+    }
+
     private void registerStaffList() {
 
-        if (getProxy().getPluginManager().getPlugin("LuckPerms") == null) {
-            getLogger().warning("You need LuckPermsBungee to use StaffList.");
+        if (getProxy().getPluginManager().getPlugin("LuckPerms") == null && getProxy().getPluginManager().getPlugin("UltraPermissions") == null) {
+            getLogger().warning("You need LuckPerms or UltraPermissions to use StaffList.");
             return;
         }
 
@@ -372,6 +401,7 @@ public class CleanStaffChat extends Plugin {
         discordTextFile = new TextFile(getDataFolder().toPath(), "discord.yml");
         aliasesTextFile = new TextFile(getDataFolder().toPath(), "aliases.yml");
         redisTextFile = new TextFile(getDataFolder().toPath(), "redis.yml");
+        serversTextFile = new TextFile(getDataFolder().toPath(), "servers.yml");
         versionTextFile = new TextFile(getDataFolder().toPath(), "version.yml");
 
     }
@@ -387,7 +417,15 @@ public class CleanStaffChat extends Plugin {
         }
 
         if (jda == null) {
-            getLogger().severe("Fatal error while updating JDA. Please report this error to discord.io/futurevelopment.");
+            getLogger().severe("Fatal error while updating JDA. Please report this error to https://dsc.gg/futuredevelopment.");
+            return;
+        }
+
+        if (isPremiumVanish()) {
+            jda.getPresence().setActivity(Activity.of(Activity.ActivityType.valueOf
+                            (BungeeDiscordConfig.DISCORD_ACTIVITY_TYPE.get(String.class).toUpperCase()),
+                    BungeeDiscordConfig.DISCORD_ACTIVITY.get(String.class)
+                            .replace("%players%", String.valueOf(getProxy().getOnlineCount() - BungeeVanishAPI.getInvisiblePlayers().size()))));
             return;
         }
 
@@ -395,7 +433,6 @@ public class CleanStaffChat extends Plugin {
                         (BungeeDiscordConfig.DISCORD_ACTIVITY_TYPE.get(String.class).toUpperCase()),
                 BungeeDiscordConfig.DISCORD_ACTIVITY.get(String.class)
                         .replace("%players%", String.valueOf(getProxy().getOnlineCount()))));
-
     }
 
     public void autoUpdate() {
@@ -410,8 +447,8 @@ public class CleanStaffChat extends Plugin {
             updated = true;
             getLogger().warning("CleanStaffChat successfully updated, a restart is required.");
 
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException ignored) {
+            getLogger().severe("Error while updating CleanStaffChat, please report this error on https://dsc.gg/futuredevelopment.");
         }
     }
 
@@ -430,4 +467,22 @@ public class CleanStaffChat extends Plugin {
         }
     }
 
+    public boolean isPremiumVanish() {
+        if (BungeeConfig.PREMIUMVANISH.get(Boolean.class)) {
+            return getProxy().getPluginManager().getPlugin("PremiumVanish") != null;
+        }
+        return false;
+    }
+
+    public boolean isInBlockedStaffChatServer(ProxiedPlayer player) {
+        return (!BungeeServers.SC_BLOCKED_SRV.getStringList().isEmpty() && BungeeServers.SC_BLOCKED_SRV.getStringList().contains(player.getServer().getInfo().getName()));
+    }
+
+    public boolean isInBlockedAdminChatServer(ProxiedPlayer player) {
+        return (!BungeeServers.AC_BLOCKED_SRV.getStringList().isEmpty() && BungeeServers.AC_BLOCKED_SRV.getStringList().contains(player.getServer().getInfo().getName()));
+    }
+
+    public boolean isInBlockedDonorChatServer(ProxiedPlayer player) {
+        return (!BungeeServers.DC_BLOCKED_SRV.getStringList().isEmpty() && BungeeServers.DC_BLOCKED_SRV.getStringList().contains(player.getServer().getInfo().getName()));
+    }
 }

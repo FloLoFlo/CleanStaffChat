@@ -9,8 +9,10 @@ public enum VelocityConfig {
 
     STAFFCHAT_JOIN_SILENT_MODULE("settings.staffchat.staff_join_silent"),
     STAFFCHAT_QUIT_SILENT_MODULE("settings.staffchat.staff_quit_silent"),
+    STAFFCHAT_SWITCH_SILENT_MODULE("settings.staffchat.staff_switch_silent"),
     STAFFCHAT_JOIN_SILENT_PERMISSION("settings.staffchat.staffchat_join_silent_permission"),
     STAFFCHAT_QUIT_SILENT_PERMISSION("settings.staffchat.staffchat_quit_silent_permission"),
+    STAFFCHAT_SWITCH_SILENT_PERMISSION("settings.staffchat.staffchat_switch_silent_permission"),
 
     HIDE_ADVERTS("settings.hide_advertisements"),
 
@@ -18,11 +20,17 @@ public enum VelocityConfig {
     STAFFCHAT_NO_AFK_ONCHANGE_SERVER("settings.staffchat.staff_disable_afk_on_move"),
     STAFFCHAT_AFK_PERMISSION("settings.staffchat.staffchat_afk_permission"),
 
+    PREMIUMVANISH("modules.premiumvanish_hook"),
+
     STAFF_JOIN_MESSAGE("settings.staffchat.staff_join_message"),
     STAFF_QUIT_MESSAGE("settings.staffchat.staff_quit_message"),
     COOLDOWN_BYPASS_DISCORD("settings.donorchat.donorchat_discord_cooldown_bypass"),
     COOLDOWN_BYPASS_PERMISSION("settings.donorchat.donorchat_cooldown_bypass_permission"),
-    JOIN_LEAVE_DISCORD_MODULE("modules.staffchat_discord_join_leave_module"),
+
+    MUTECHAT_MODULE("modules.globalchat_mute_command_module"),
+    MUTECHAT_PERMISSION("settings.globalchat.global_mutechat_permission"),
+    MUTECHAT_ALL_PERMISSION("settings.globalchat.global_mutechat_all_permission"),
+    MUTECHAT_BYPASS_PERMISSION("settings.globalchat.global_mutechat_bypass_permission"),
 
     STAFFCHAT_USE_PERMISSION("settings.staffchat.staffchat_use_permission"),
     ADMINCHAT_USE_PERMISSION("settings.adminchat.adminchat_use_permission"),
@@ -51,7 +59,12 @@ public enum VelocityConfig {
     DONORCHAT_TOGGLE_MODULE("modules.donorchat_toggle_module"),
 
     STAFFLIST_MODULE("modules.stafflist_module"),
-    STAFFLIST_PERMISSION("settings.stafflist_permission"),
+    STAFFLIST_PERMISSION("settings.stafflist.stafflist_permission"),
+    STAFFLIST_SHOW_PERMISSION("settings.stafflist.stafflist_show_permission"),
+    STAFFLIST_BYPASS_PERMISSION("settings.stafflist.stafflist_bypass_permission"),
+    STAFFLIST_BYPASS("settings.stafflist.bypass_enabled"),
+
+    SORTING("settings.stafflist.sorting"),
 
     STAFFCHAT_RELOAD_PERMISSION("settings.reload_permission"),
 
@@ -70,6 +83,15 @@ public enum VelocityConfig {
     STAFFCHAT_DISCORD_MODULE("modules.staffchat_discord_module"),
     ADMINCHAT_DISCORD_MODULE("modules.adminchat_discord_module"),
     DONORCHAT_DISCORD_MODULE("modules.donorchat_discord_module"),
+
+    STAFFCHAT_DISCORD_JOINLEAVE_MODULE("modules.staffchat_discord_join_leave_module"),
+    STAFFCHAT_DISCORD_SWITCH_MODULE("modules.staffchat_discord_switch_module"),
+    STAFFCHAT_DISCORD_AFK_MODULE("modules.staffchat_discord_afk_module"),
+
+    MINIMESSAGE("modules.minimessage_support"),
+    MINIPLACEHOLDERS("modules.miniplaceholders_support"),
+
+    DOUBLE_MESSAGE("modules.double_message_workaround"),
 
     STAFFCHAT("settings.use_staffchat"),
     ADMINCHAT("settings.use_adminchat"),

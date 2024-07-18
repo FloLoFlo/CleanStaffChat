@@ -1,10 +1,13 @@
 package it.frafol.cleanstaffchat.bukkit;
 
+import com.alessiodp.libby.BukkitLibraryManager;
+import com.alessiodp.libby.Library;
+import com.alessiodp.libby.relocation.Relocation;
+import com.github.Anon8281.universalScheduler.UniversalScheduler;
+import com.github.Anon8281.universalScheduler.scheduling.schedulers.TaskScheduler;
 import com.tchristofferson.configupdater.ConfigUpdater;
-import it.frafol.cleanstaffchat.bukkit.enums.SpigotCommandsConfig;
-import it.frafol.cleanstaffchat.bukkit.enums.SpigotConfig;
-import it.frafol.cleanstaffchat.bukkit.enums.SpigotDiscordConfig;
-import it.frafol.cleanstaffchat.bukkit.enums.SpigotVersion;
+import it.frafol.cleanstaffchat.bukkit.enums.*;
+import it.frafol.cleanstaffchat.bukkit.objects.PluginMessageReceiver;
 import it.frafol.cleanstaffchat.bukkit.objects.TextFile;
 import it.frafol.cleanstaffchat.bukkit.staffchat.commands.CommandBase;
 import it.frafol.cleanstaffchat.bukkit.staffchat.commands.impl.DebugCommand;
@@ -12,16 +15,12 @@ import it.frafol.cleanstaffchat.bukkit.staffchat.commands.impl.ReloadCommand;
 import it.frafol.cleanstaffchat.bukkit.staffchat.listeners.ChatListener;
 import it.frafol.cleanstaffchat.bukkit.staffchat.listeners.JoinListener;
 import it.frafol.cleanstaffchat.bukkit.staffchat.listeners.MoveListener;
+import lombok.Getter;
 import lombok.SneakyThrows;
-import net.byteflux.libby.BukkitLibraryManager;
-import net.byteflux.libby.Library;
-import net.byteflux.libby.relocation.Relocation;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.requests.GatewayIntent;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandMap;
 import org.bukkit.entity.Player;
@@ -39,21 +38,21 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+@Getter
 public class CleanStaffChat extends JavaPlugin {
 
     private JDA jda;
+
     private TextFile configTextFile;
     private TextFile messagesTextFile;
     private TextFile discordTextFile;
     private TextFile aliasesTextFile;
     private TextFile versionTextFile;
+
+    @Getter
     private static CleanStaffChat instance;
 
     public boolean updated = false;
-
-    public static CleanStaffChat getInstance() {
-        return instance;
-    }
 
     @SneakyThrows
     @Override
@@ -63,25 +62,45 @@ public class CleanStaffChat extends JavaPlugin {
 
         BukkitLibraryManager bukkitLibraryManager = new BukkitLibraryManager(this);
 
+        final Relocation yamlrelocation = new Relocation("yaml", "it{}frafol{}libs{}yaml");
         Library yaml;
         yaml = Library.builder()
                 .groupId("me{}carleslc{}Simple-YAML")
                 .artifactId("Simple-Yaml")
                 .version("1.8.4")
+                .relocate(yamlrelocation)
                 .build();
 
-        final Relocation kotlin = new Relocation("kotlin", "it{}frafol{}libs{}kotlin");
+        final Relocation updaterrelocation = new Relocation("updater", "it{}frafol{}libs{}updater");
+        Library updater = Library.builder()
+                .groupId("com{}tchristofferson")
+                .artifactId("ConfigUpdater")
+                .version("2.1-SNAPSHOT")
+                .relocate(updaterrelocation)
+                .url("https://github.com/frafol/Config-Updater/releases/download/compile/ConfigUpdater-2.1-SNAPSHOT.jar")
+                .build();
+
+        // JDA should be beta.18 because of Java 8 incompatibility.
+        final Relocation kotlin = new Relocation("discord", "it{}frafol{}libs{}discord");
         Library discord = Library.builder()
                 .groupId("net{}dv8tion")
                 .artifactId("JDA")
-                .version("5.0.0-beta.12")
+                .version("5.0.0-beta.18")
                 .relocate(kotlin)
-                .url("https://github.com/DV8FromTheWorld/JDA/releases/download/v5.0.0-beta.12/JDA-5.0.0-beta.12-withDependencies-min.jar")
+                .url("https://github.com/DV8FromTheWorld/JDA/releases/download/v5.0.0-beta.18/JDA-5.0.0-beta.18-withDependencies-min.jar")
+                .build();
+
+        final Relocation schedulerrelocation = new Relocation("scheduler", "it{}frafol{}libs{}scheduler");
+        Library scheduler;
+        scheduler = Library.builder()
+                .groupId("com{}github{}Anon8281")
+                .artifactId("UniversalScheduler")
+                .version("0.1.6")
+                .relocate(schedulerrelocation)
                 .build();
 
         bukkitLibraryManager.addMavenCentral();
         bukkitLibraryManager.addJitPack();
-        bukkitLibraryManager.loadLibrary(discord);
 
         try {
             bukkitLibraryManager.loadLibrary(yaml);
@@ -92,10 +111,14 @@ public class CleanStaffChat extends JavaPlugin {
                     .artifactId("Simple-Yaml")
                     .version("1.8.4")
                     .url("https://github.com/Carleslc/Simple-YAML/releases/download/1.8.4/Simple-Yaml-1.8.4.jar")
+                    .relocate(yamlrelocation)
                     .build();
         }
 
         bukkitLibraryManager.loadLibrary(yaml);
+        bukkitLibraryManager.loadLibrary(updater);
+        bukkitLibraryManager.loadLibrary(discord);
+        bukkitLibraryManager.loadLibrary(scheduler);
 
         getLogger().info("\n  ___  __    ____    __    _  _    ___   ___ \n" +
                 " / __)(  )  ( ___)  /__\\  ( \\( )  / __) / __)\n" +
@@ -103,27 +126,7 @@ public class CleanStaffChat extends JavaPlugin {
                 " \\___)(____)(____)(__)(__)(_)\\_)  (___/ \\___)\n");
 
 
-        getLogger().info("Server version: " + Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3] + ".");
-
-        if (Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3].contains("1_6_R")
-            || Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3].contains("1_5_R")
-                || Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3].contains("1_4_R")
-                || Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3].contains("1_3_R")
-                || Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3].contains("1_2_R")
-                || Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3].contains("1_1_R")
-                || Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3].contains("1_0_R")) {
-
-            getLogger().severe("Support for your version was declined.");
-
-            Bukkit.getPluginManager().disablePlugin(this);
-
-            return;
-
-        }
-
-        if (isFolia()) {
-            getLogger().warning("Support for Folia has not been tested and is only for experimental purposes.");
-        }
+        getLogger().info("Server version: " + getServer().getBukkitVersion());
 
         File configFile = new File(getDataFolder(), "config.yml");
         File messageFile = new File(getDataFolder(), "messages.yml");
@@ -139,14 +142,12 @@ public class CleanStaffChat extends JavaPlugin {
                 ConfigUpdater.update(this, "messages.yml", messageFile, Collections.emptyList());
                 ConfigUpdater.update(this, "discord.yml", discordFile, Collections.emptyList());
                 ConfigUpdater.update(this, "aliases.yml", aliasesFile, Collections.emptyList());
-            } catch (IOException exception) {
-                getLogger().severe("Unable to update configuration file, see the error below:");
-                exception.printStackTrace();
+            } catch (IOException ignored) {
+                getLogger().severe("Unable to update the files. Are you on Windows?");
             }
 
             versionTextFile.getConfig().set("version", getDescription().getVersion());
             versionTextFile.getConfig().save();
-
         }
 
         configTextFile = new TextFile(getDataFolder().toPath(), "config.yml");
@@ -158,23 +159,38 @@ public class CleanStaffChat extends JavaPlugin {
         getCommandMap().register(getName().toLowerCase(), new ReloadCommand(this));
         getServer().getPluginManager().registerEvents(new DebugCommand(), this);
 
+        if (SpigotConfig.WORKAROUND_KICK.get(Boolean.class) || SpigotConfig.DOUBLE_MESSAGE.get(Boolean.class)) {
+            getServer().getMessenger().registerIncomingPluginChannel(this, "cleansc:cancel", new PluginMessageReceiver());
+            getServer().getPluginManager().registerEvents(new it.frafol.cleanstaffchat.bukkit.objects.ChatListener(), this);
+            getLogger().info("Successfully enabled in Proxy mode!");
+            return;
+        }
+
         if (SpigotConfig.STAFFLIST_MODULE.get(Boolean.class)) {
             registerStaffListCommands();
         }
 
-        if (SpigotDiscordConfig.DISCORD_ENABLED.get(Boolean.class)) {
+        UpdateChecker();
+        startJDA();
 
-            jda = JDABuilder.createDefault(SpigotDiscordConfig.DISCORD_TOKEN.get(String.class)).enableIntents(GatewayIntent.MESSAGE_CONTENT).build();
-            updateJDATask();
+        if (isPremiumVanish()) {
+            getLogger().info("Hooked into PremiumVanish successfully!");
+        }
 
-            getLogger().info("Hooked into Discord successfully!");
+        if (isSuperVanish()) {
+            getLogger().info("Hooked into SuperVanish successfully!");
+        }
 
+        if (getPAPI()) {
+            getLogger().info("Hooked into PlaceholderAPI successfully!");
+        }
+
+        if (getMiniPlaceholders()) {
+            getLogger().info("Hooked into MiniPlaceholders successfully!");
         }
 
         if (SpigotConfig.STAFFCHAT.get(Boolean.class)) {
-
             registerStaffChatCommands();
-
             getServer().getPluginManager().registerEvents(new JoinListener(this), this);
             getServer().getPluginManager().registerEvents(new ChatListener(this), this);
             getServer().getPluginManager().registerEvents(new MoveListener(this), this);
@@ -182,32 +198,19 @@ public class CleanStaffChat extends JavaPlugin {
             if (SpigotConfig.STAFFCHAT_DISCORD_MODULE.get(Boolean.class) && SpigotDiscordConfig.DISCORD_ENABLED.get(Boolean.class)) {
                 jda.addEventListener(new ChatListener(this));
             }
-
         }
 
         if (SpigotConfig.DONORCHAT.get(Boolean.class)) {
+            registerDonorChatCommands();
+            getServer().getPluginManager().registerEvents(new it.frafol.cleanstaffchat.bukkit.donorchat.listeners.ChatListener(this), this);
 
-            if (!isFolia()) {
-
-                registerDonorChatCommands();
-
-                getServer().getPluginManager().registerEvents(new it.frafol.cleanstaffchat.bukkit.donorchat.listeners.ChatListener(this), this);
-
-                if (SpigotConfig.DONORCHAT_DISCORD_MODULE.get(Boolean.class) && SpigotDiscordConfig.DISCORD_ENABLED.get(Boolean.class)) {
-                    jda.addEventListener(new it.frafol.cleanstaffchat.bukkit.donorchat.listeners.ChatListener(this));
-                }
-
-            } else {
-                getLogger().severe("DonorChat is not supported in Folia, disabling it.");
+            if (SpigotConfig.DONORCHAT_DISCORD_MODULE.get(Boolean.class) && SpigotDiscordConfig.DISCORD_ENABLED.get(Boolean.class)) {
+                jda.addEventListener(new it.frafol.cleanstaffchat.bukkit.donorchat.listeners.ChatListener(this));
             }
-
-
         }
 
         if (SpigotConfig.ADMINCHAT.get(Boolean.class)) {
-
             registerAdminChatCommands();
-
             getServer().getPluginManager().registerEvents(new it.frafol.cleanstaffchat.bukkit.adminchat.listeners.ChatListener(this), this);
 
             if (SpigotConfig.ADMINCHAT_DISCORD_MODULE.get(Boolean.class) && SpigotDiscordConfig.DISCORD_ENABLED.get(Boolean.class)) {
@@ -216,27 +219,35 @@ public class CleanStaffChat extends JavaPlugin {
 
         }
 
-        if (SpigotConfig.STATS.get(Boolean.class) && !getDescription().getVersion().contains("alpha")) {
-
-            new Metrics(this, 16448);
-
-            getLogger().info("Metrics loaded successfully!");
+        if (SpigotConfig.MUTECHAT_MODULE.get(Boolean.class)) {
+            registerMuteChatCommands();
+            getServer().getPluginManager().registerEvents(new it.frafol.cleanstaffchat.bukkit.general.listeners.ChatListener(this), this);
         }
 
-        UpdateChecker();
+        if (SpigotConfig.STATS.get(Boolean.class) && !getDescription().getVersion().contains("alpha")) {
+            new Metrics(this, 16448);
+            getLogger().info("Metrics loaded successfully!");
+        }
 
         getLogger().info("Plugin successfully enabled!");
 
     }
 
+    public void startJDA() {
+        if (SpigotDiscordConfig.DISCORD_ENABLED.get(Boolean.class)) {
+            try {
+                jda = JDABuilder.createDefault(SpigotDiscordConfig.DISCORD_TOKEN.get(String.class)).enableIntents(GatewayIntent.MESSAGE_CONTENT).build();
+            } catch (ExceptionInInitializerError e) {
+                getLogger().severe("Invalid Discord configuration, please check your discord.yml file.");
+            }
+            updateJDATask();
+            getLogger().info("Hooked into Discord successfully!");
+        }
+    }
+
     private void UpdateChecker() {
 
         if (!SpigotConfig.UPDATE_CHECK.get(Boolean.class)) {
-            return;
-        }
-
-        if (isFolia()) {
-            getLogger().severe("Update Checker is not supported in Folia.");
             return;
         }
 
@@ -273,8 +284,8 @@ public class CleanStaffChat extends JavaPlugin {
             updated = true;
             getLogger().warning("CleanStaffChat successfully updated, a restart is required.");
 
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException ignored) {
+            getLogger().severe("Unable to update the plugin, please download the latest version manually. Are you on Windows?");
         }
     }
 
@@ -291,15 +302,6 @@ public class CleanStaffChat extends JavaPlugin {
         try (InputStream inputStream = url.openStream()) {
             Files.copy(inputStream, outputFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
         }
-    }
-
-    public boolean isFolia() {
-        try {
-            Class.forName("io.papermc.paper.threadedregions.RegionizedServerInitEvent");
-        } catch (ClassNotFoundException e) {
-            return false;
-        }
-        return true;
     }
 
     @SneakyThrows
@@ -324,8 +326,8 @@ public class CleanStaffChat extends JavaPlugin {
     @SneakyThrows
     private void registerStaffListCommands() {
         
-        if (getServer().getPluginManager().getPlugin("LuckPerms") == null) {
-            getLogger().warning("You need LuckPerms to use the StaffList.");
+        if (getServer().getPluginManager().getPlugin("LuckPerms") == null && getServer().getPluginManager().getPlugin("UltraPermissions") == null) {
+            getLogger().warning("You need LuckPerms or UltraPermissions to use the StaffList.");
             return;
         }
 
@@ -366,6 +368,25 @@ public class CleanStaffChat extends JavaPlugin {
     }
 
     @SneakyThrows
+    private void registerMuteChatCommands() {
+        List<Command> muteChatCommands = new ArrayList<>();
+        for(SpigotCommandsConfig commandConfig : SpigotCommandsConfig.getMuteChatCommands()){
+            List<String> commandLabels = commandConfig.getStringList();
+            if (commandLabels.isEmpty()) {
+                continue;
+            }
+
+            muteChatCommands.add((CommandBase) commandConfig.getCommandClass().getDeclaredConstructors()[0].newInstance(
+                    this,
+                    commandLabels.get(0),
+                    "",
+                    commandLabels.subList(1, commandLabels.size())
+            ));
+        }
+        getCommandMap().registerAll(getName().toLowerCase(), muteChatCommands);
+    }
+
+    @SneakyThrows
     private void registerDonorChatCommands() {
         List<Command> donorChatCommands = new ArrayList<>();
         for(SpigotCommandsConfig commandConfig : SpigotCommandsConfig.getDonorChatCommands()){
@@ -389,10 +410,6 @@ public class CleanStaffChat extends JavaPlugin {
         Field commandMap = getServer().getClass().getDeclaredField("commandMap");
         commandMap.setAccessible(true);
         return (CommandMap) commandMap.get(getServer());
-    }
-
-    public JDA getJda() {
-        return jda;
     }
 
     public YamlFile getConfigTextFile() {
@@ -419,7 +436,11 @@ public class CleanStaffChat extends JavaPlugin {
     public void onDisable() {
         getLogger().info("Deleting instances...");
 
-        if (SpigotDiscordConfig.DISCORD_ENABLED.get(Boolean.class)) {
+        if (SpigotConfig.WORKAROUND_KICK.get(Boolean.class)) {
+            getServer().getMessenger().unregisterIncomingPluginChannel(this, "cleansc:cancel", new PluginMessageReceiver());
+        }
+
+        if (SpigotDiscordConfig.DISCORD_ENABLED.get(Boolean.class) && !SpigotConfig.WORKAROUND_KICK.get(Boolean.class)) {
             jda.shutdownNow();
         }
 
@@ -431,10 +452,6 @@ public class CleanStaffChat extends JavaPlugin {
 
     public void UpdateCheck(Player player) {
 
-        if (isFolia()) {
-            return;
-        }
-
         new UpdateCheck(this).getVersion(version -> {
             if (Integer.parseInt(getDescription().getVersion().replace(".", "")) < Integer.parseInt(version.replace(".", ""))) {
 
@@ -444,14 +461,17 @@ public class CleanStaffChat extends JavaPlugin {
                 }
 
                 if (!updated) {
-                    player.sendMessage(ChatColor.YELLOW + "There is a new update available, download it on SpigotMC!");
+                    player.sendMessage(SpigotMessages.UPDATE.color()
+                            .replace("%version%", version)
+                            .replace("%prefix%", SpigotMessages.PREFIX.color()));
                 }
             }
         });
     }
 
     private void updateJDATask() {
-        getServer().getScheduler().runTaskTimerAsynchronously(this, this::updateJDA, 1, 20 * 30);
+        TaskScheduler scheduler = UniversalScheduler.getScheduler(this);
+        scheduler.runTaskTimerAsynchronously(this::updateJDA, 1, 20 * 30);
     }
 
     public void updateJDA() {
@@ -461,7 +481,7 @@ public class CleanStaffChat extends JavaPlugin {
         }
 
         if (jda == null) {
-            getLogger().severe("Fatal error while updating JDA. Please report this error to discord.io/futurevelopment.");
+            getLogger().severe("Fatal error while updating JDA. Please report this error to https://dsc.gg/futuredevelopment.");
             return;
         }
 
@@ -472,4 +492,25 @@ public class CleanStaffChat extends JavaPlugin {
 
     }
 
+    public boolean isPremiumVanish() {
+        if (SpigotConfig.PREMIUMVANISH.get(Boolean.class)) {
+            return getServer().getPluginManager().getPlugin("PremiumVanish") != null;
+        }
+        return false;
+    }
+
+    public boolean isSuperVanish() {
+        if (SpigotConfig.SUPERVANISH.get(Boolean.class)) {
+            return getServer().getPluginManager().getPlugin("SuperVanish") != null;
+        }
+        return false;
+    }
+
+    public boolean getPAPI() {
+        return getServer().getPluginManager().getPlugin("PlaceholderAPI") != null;
+    }
+
+    public boolean getMiniPlaceholders() {
+        return getServer().getPluginManager().getPlugin("MiniPlaceholders") != null && SpigotConfig.MINIPLACEHOLDERS.get(Boolean.class);
+    }
 }
